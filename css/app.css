@@ -781,3 +781,27 @@ td{
 *::-webkit-scrollbar{ width: 10px; height: 10px; }
 *::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.14); border-radius: 10px; }
 *::-webkit-scrollbar-track{ background: rgba(255,255,255,.05); border-radius: 10px; }
+
+
+
+/* ===== DARK THEME OVERRIDES FOR WIZARD LIGHT BLOCKS ===== */
+/* app.css had some intentional light blocks; in dark theme they hurt readability */
+body.theme-dark .wizPane[data-pane="toss"],
+body.theme-dark .wizCard .tossWrap{
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04)) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+body.theme-dark .wizPane[data-pane="toss"] .tossCardBtn,
+body.theme-dark .wizCardBtn{
+  background: rgba(255,255,255,.08) !important;
+  color: var(--text) !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+}
+body.theme-dark .tossQ,
+body.theme-dark .tossCard{
+  background: rgba(255,255,255,.05) !important;
+  color: var(--text) !important;
+  border-color: rgba(255,255,255,.12) !important;
+}
+body.theme-dark .tossNote{ color: rgba(244,247,255,.75) !important; }
