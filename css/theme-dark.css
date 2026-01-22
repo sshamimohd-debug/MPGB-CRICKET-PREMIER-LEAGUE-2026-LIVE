@@ -1,4 +1,16 @@
 :root{
+  /* SUNLIGHT / HIGH CONTRAST TUNING */
+  --bg0:#030612;
+  --bg1:#061026;
+  --card:#0d1833f2;
+  --card2:#0c1631e6;
+  --text:#f4f7ff;
+  --muted:#c3cbea;
+  --line:#253a78;
+  --border: rgba(255,255,255,.14);
+  --chip:#0b1a3d;
+  --accent:#35c3ff;
+
   --bg0:#070b16;
   --bg1:#0b1020;
   --card:#0f1730cc;
@@ -262,4 +274,16 @@ input,select{
   .topbar .nav{ display:none; }
   .topbar .inner{ padding: 12px 14px; }
   .brand .sub{ display:none; }
+}
+
+
+
+/* ---- Aliases for app-wide overrides ---- */
+:root{
+  --txt: var(--text);
+  --a1: var(--accent);
+  --a2: #7c4dff;
+  --a3: #ff4d6d;
+  --a4: #ffb703;
+  --a5: #2ee59d;
 }

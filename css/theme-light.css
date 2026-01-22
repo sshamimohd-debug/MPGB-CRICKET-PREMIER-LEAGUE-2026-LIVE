@@ -307,3 +307,15 @@ input,select{
   .topbar .inner{ padding: 12px 14px; }
   .brand .sub{ display:none; }
 }
+
+
+
+/* ---- Aliases for app-wide overrides ---- */
+:root{
+  --txt: var(--text);
+  --a1: var(--accent);
+  --a2: #7c4dff;
+  --a3: #ff4d6d;
+  --a4: #ffb703;
+  --a5: #2ee59d;
+}
