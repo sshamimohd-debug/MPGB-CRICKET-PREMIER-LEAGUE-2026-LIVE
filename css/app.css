@@ -1,0 +1,783 @@
+
+/* ===== Scorer Setup Wizard (mobile operator) ===== */
+/* Wizard open: prevent background scroll (mobile stability) */
+body.wiz-open{ overflow:hidden; }
+.wiz{ position:fixed; inset:0; z-index:9999; display:flex; align-items:center; justify-content:center;
+  padding:16px;
+  /* Darker overlay so underlying page doesn't show as grey side panels on wide screens */
+  background:
+    radial-gradient(1200px 700px at 30% 10%, rgba(30,144,255,.14), transparent 62%),
+    radial-gradient(900px 600px at 80% 90%, rgba(255,165,0,.10), transparent 62%),
+    rgba(0,0,0,.78);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  overflow:auto;
+  overscroll-behavior: contain;
+}
+.wiz.hidden{ display:none; }
+.wizCard{ width:min(560px, 96vw); max-height: min(90vh, 920px); overflow:auto; border-radius:22px; padding:16px; color:#e9f1ff;
+  background: linear-gradient(180deg, rgba(18,26,48,.92), rgba(10,15,28,.92));
+  box-shadow: 0 18px 60px rgba(0,0,0,.45);
+  transform: translateY(8px); animation: wizIn .25s ease-out forwards;
+}
+@keyframes wizIn{ to { transform: translateY(0); } }
+.wizTop{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;}
+.wizTitle{ font-size:18px; font-weight:800; letter-spacing:.2px;}
+.wizStep{ font-size:12px; opacity:.8; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.06);}
+
+.wizBody{ margin-top:6px; }
+.wizPane{ animation: paneIn .22s ease-out; }
+@keyframes paneIn{ from{ opacity:.4; transform: translateY(8px);} to{opacity:1; transform:none;} }
+.wizH{ font-size:16px; font-weight:800; margin:6px 0 4px;}
+.wizP{ font-size:13px; opacity:.85; margin:0 0 12px;}
+
+.wizGrid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;}
+.wizBtn{ height:46px; border-radius:14px; border:1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.06); color:#eaf2ff; font-weight:700; cursor:pointer;
+  transition: transform .08s ease, background .15s ease, border-color .15s ease;
+}
+.wizBtn:active{ transform: scale(.98); }
+.wizBtn.primary{ background: linear-gradient(90deg, rgba(30,144,255,.95), rgba(0,200,255,.85)); border-color: transparent; }
+.wizBtn.ghost{ background: transparent; }
+.wizBtn.sel{ outline:2px solid rgba(255,165,0,.8); border-color: rgba(255,165,0,.35); background: rgba(255,165,0,.10); }
+
+.wizRow{ display:grid; grid-template-columns: 120px 1fr; gap:10px; align-items:center; margin:10px 0;}
+.wizRow label{ font-size:13px; opacity:.85;}
+.wizRow select{ height:44px; border-radius:12px; border:1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.25); color:#eaf2ff; padding:0 10px;
+}
+
+.wizSubH{ font-size:13px; font-weight:800; opacity:.9; padding-top:6px; }
+
+.wizFooter{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; }
+.wizDots{ display:flex; gap:6px; align-items:center; justify-content:center; flex:1; }
+.wizDots .d{ width:8px; height:8px; border-radius:999px; background: rgba(255,255,255,.18); }
+.wizDots .d.on{ background: rgba(255,165,0,.95); box-shadow: 0 0 14px rgba(255,165,0,.45); }
+
+.wizList{ display:flex; flex-direction:column; gap:10px; }
+
+/* XI row */
+.wizPlayerRow{ display:grid; grid-template-columns:40px 1fr 42px; gap:12px; align-items:center; padding:10px 12px; border-radius:16px; border:1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.04); cursor:pointer; }
+.wizPlayerRow.on{ border-color: rgba(30,144,255,.55); background: rgba(30,144,255,.16); }
+.wizAv{ width:40px; height:40px; border-radius:999px; display:grid; place-items:center; font-weight:900; color:#d6e6ff; background: linear-gradient(180deg, rgba(30,144,255,.35), rgba(30,144,255,.10)); border:1px solid rgba(30,144,255,.35); }
+.wizPName{ font-size:14px; font-weight:800; letter-spacing:.2px; }
+.wizPToggle{ width:42px; height:34px; border-radius:999px; display:grid; place-items:center; font-weight:900; border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); }
+.wizPlayerRow.on .wizPToggle{ border-color: rgba(0,255,160,.35); background: rgba(0,255,160,.10); }
+
+/* legacy pills (kept for backward compatibility) */
+.wizPill{ height:42px; border-radius:999px; border:1px solid rgba(255,255,255,.12); display:flex; align-items:center; justify-content:center; padding:0 10px; font-size:13px; cursor:pointer; user-select:none; }
+.wizPill.on{ background: rgba(30,144,255,.18); border-color: rgba(30,144,255,.45); }
+
+/* Playing XI tabs (wizard) */
+.xiTabs{ display:flex; gap:10px; align-items:center; margin-bottom:10px; }
+.xiTab{ flex:1; height:40px; border-radius:999px; border:1px solid rgba(255,255,255,.16);
+  background: rgba(255,255,255,.06); color:#e9f1ff; font-weight:800; cursor:pointer;
+}
+.xiTab.on{ background: rgba(30,144,255,.22); border-color: rgba(30,144,255,.55); }
+.xiHint{ flex:2; text-align:right; font-size:12px; color: rgba(233,241,255,.75); }
+@media (max-width:420px){ .xiHint{ display:none; } }
+
+/* XI pill selected */
+.wizPill.sel{ background: rgba(30,144,255,.18); border-color: rgba(30,144,255,.45); }
+
+.wizBigOk{ margin-top:10px; padding:14px; border-radius:16px; background: rgba(0,255,160,.10);
+  border:1px solid rgba(0,255,160,.22); font-weight:800; text-align:center;
+}
+
+/* Innings Break (wizard) */
+.wizBreakCard{ padding:14px; border-radius:18px; background: rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.10); }
+.wizBreakLine{ font-size:14px; opacity:.92; }
+.wizBreakLine.strong{ font-size:16px; font-weight:900; opacity:1; margin-top:6px; }
+
+@media (max-width: 420px){
+  .wizRow{ grid-template-columns: 1fr; }
+}
+
+/* Toss screen (wizard) – looks like pro mobile app */
+.wizPane[data-pane="toss"]{
+  background:#fff;
+  color:#111;
+  border-radius:16px;
+  overflow:hidden;
+}
+.wizPane[data-pane="toss"] .tossBar{
+  height:56px;
+  background:#e53935;
+  color:#fff;
+  display:grid;
+  grid-template-columns:48px 1fr 48px;
+  align-items:center;
+  padding:0 10px;
+  font-weight:800;
+}
+.wizPane[data-pane="toss"] .tossBarLeft,
+.wizPane[data-pane="toss"] .tossBarRight{
+  opacity:.95;
+  font-size:18px;
+  text-align:center;
+}
+.wizPane[data-pane="toss"] .tossBarTitle{
+  text-align:center;
+  font-size:18px;
+}
+.wizPane[data-pane="toss"] .tossBody{
+  padding:14px;
+}
+.wizPane[data-pane="toss"] .tossQ{
+  font-size:15px;
+  margin:10px 0 8px;
+}
+.wizPane[data-pane="toss"] .tossGrid2{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.wizPane[data-pane="toss"] .tossCardBtn{
+  background:#fff;
+  border:1px solid #e6e6e6;
+  border-radius:12px;
+  padding:14px 10px;
+  text-align:center;
+  box-shadow:0 2px 10px rgba(0,0,0,.06);
+  cursor:pointer;
+}
+.wizPane[data-pane="toss"] .tossCardBtn .tossCircle{
+  width:72px;
+  height:72px;
+  border-radius:999px;
+  margin:0 auto 10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:26px;
+  font-weight:900;
+  color:#fff;
+}
+.wizPane[data-pane="toss"] .tossCardBtn .tossLbl{
+  font-size:14px;
+  color:#333;
+}
+.wizPane[data-pane="toss"] .tossCardBtn.sel{
+  outline:2px solid rgba(229,57,53,.35);
+  border-color:rgba(229,57,53,.35);
+}
+.wizPane[data-pane="toss"] .tossCoin{
+  width:110px;
+  height:110px;
+  border-radius:999px;
+  margin:16px auto 6px;
+  background:radial-gradient(circle at 30% 30%, #f5f5f5, #cfcfcf);
+  border:1px solid #d8d8d8;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
+  color:#555;
+}
+.wizPane[data-pane="toss"] .tossHint{
+  text-align:center;
+  color:#666;
+  font-size:13px;
+  margin:6px 0 8px;
+}
+
+/* Match wizard card tweaks for light toss pane */
+.wizCard{ overflow:hidden; }
+
+  .wizRow label{ margin-bottom:4px; }
+}
+
+/* =========================
+   Premium Mobile Layout (UI only)
+   ========================= */
+
+.heroCard{
+  border:1px solid var(--border);
+  border-radius:22px;
+  padding:14px;
+  background:
+    radial-gradient(900px 360px at 10% -15%, rgba(106,167,255,.22), rgba(0,0,0,0) 60%),
+    radial-gradient(700px 300px at 90% 0%, rgba(0,255,160,.10), rgba(0,0,0,0) 55%),
+    linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+}
+
+.heroTitle{ font-size:18px; font-weight:900; letter-spacing:.2px; }
+.heroSub{ font-size:12px; opacity:.8; margin-top:4px; }
+
+.quickGrid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:12px; }
+.quickGrid .btn{ height:46px; border-radius:16px; }
+
+
+/* Home: 1-row primary actions */
+.quickRow{
+  display:flex;
+  gap:10px;
+  margin-top:8px;
+  overflow-x:auto;
+  padding-bottom:4px;
+  -webkit-overflow-scrolling: touch;
+}
+.quickRow::-webkit-scrollbar{ height:6px; }
+.quickRow::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.12); border-radius:999px; }
+
+.qa{
+  flex: 0 0 auto;
+  min-width: 92px;
+  height: 64px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.04);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  text-decoration:none;
+  color: inherit;
+  box-shadow: 0 10px 22px rgba(0,0,0,.18);
+  transition: transform .08s ease, background .15s ease, border-color .15s ease;
+}
+.qa:active{ transform: scale(.98); }
+.qaI{ font-size:18px; }
+.qaT{ font-weight:900; font-size:13px; letter-spacing:.15px; }
+
+.btn.full{ width:100%; margin-top:10px; }
+
+/* Modal (Info) */
+.modal{ position:fixed; inset:0; z-index:10000; display:none; }
+.modal.open{ display:block; }
+.modalBg{ position:absolute; inset:0; background: rgba(0,0,0,.55); backdrop-filter: blur(8px); }
+.modalCard{
+  position:absolute;
+  left:50%;
+  transform: translateX(-50%);
+  bottom: calc(82px + env(safe-area-inset-bottom));
+  width: min(640px, 94vw);
+  max-height: min(75vh, 720px);
+  overflow:auto;
+  border-radius:22px;
+  border:1px solid rgba(255,255,255,.12);
+  padding:14px;
+  background: linear-gradient(180deg, rgba(18,26,48,.96), rgba(10,15,28,.96));
+  box-shadow: 0 22px 70px rgba(0,0,0,.55);
+}
+.modalTop{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+body.modalOpen{ overflow:hidden; }
+
+@media (max-width: 420px){
+  .qa{ min-width: 86px; height: 60px; }
+  .modalCard{ bottom: calc(86px + env(safe-area-inset-bottom)); }
+}
+
+/* Schedule: mobile match cards */
+.matchCard{
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:12px;
+  background: rgba(255,255,255,.03);
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+.mcL{ min-width:68px; }
+.mcId{ display:inline-flex; padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.04); font-weight:800; font-size:12px; }
+.mcTime{ font-size:12px; opacity:.8; margin-top:6px; }
+.mcMid{ flex:1; }
+.mcTeams{ font-weight:900; line-height:1.1; }
+.mcMeta{ font-size:12px; opacity:.78; margin-top:6px; }
+.mcR{ display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
+
+.groupSticky{
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding:10px 0 8px;
+  background: linear-gradient(180deg, rgba(7,11,22,.92), rgba(7,11,22,.55));
+  backdrop-filter: blur(10px);
+}
+
+/* Scorer: premium keypad */
+.scorerShell{ display:grid; gap:12px; }
+
+.scorerKeypad{
+  position: sticky;
+  bottom: calc(88px + env(safe-area-inset-bottom));
+  z-index: 60;
+  border:1px solid var(--border);
+  border-radius:22px;
+  padding:12px;
+  background: linear-gradient(180deg, rgba(18,26,48,.92), rgba(10,15,28,.92));
+  box-shadow: 0 18px 60px rgba(0,0,0,.45);
+}
+
+.runGrid{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; }
+.runBtn{ height:54px; border-radius:18px; font-weight:900; font-size:18px; }
+.runBtn.four{ border-color: rgba(106,167,255,.5); }
+.runBtn.six{ border-color: rgba(0,255,160,.35); }
+
+.chipRow{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.xChip{ height:40px; padding:0 12px; border-radius:999px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); font-weight:800; }
+.xChip:active{ transform: scale(.98); }
+
+.scorerActions{ display:flex; gap:10px; margin-top:10px; }
+.scorerActions .btn{ height:46px; border-radius:16px; flex:1; }
+
+@media (max-width: 520px){
+  .grid.cols2{ grid-template-columns: 1fr; }
+  #scorerLiveChip{ min-width: unset !important; width:100%; }
+}
+
+
+
+/* Toss pane (app-like) */
+.wizPane[data-pane="toss"]{ padding:0; }
+.tossBar{ height:52px; display:grid; grid-template-columns:44px 1fr 44px; align-items:center; background:#e53935; color:#fff; border-radius:18px 18px 12px 12px; padding:0 8px; margin-bottom:12px; }
+.tossBarLeft,.tossBarRight{ display:grid; place-items:center; font-size:18px; opacity:.95; }
+.tossBarTitle{ font-weight:900; letter-spacing:.3px; text-align:center; }
+.tossQ{ color:#0b1220; font-weight:900; margin:10px 0 10px; }
+.tossGrid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.tossCard{ background:#fff; color:#0b1220; border-radius:14px; border:1px solid rgba(0,0,0,.10); padding:14px; min-height:110px; display:grid; place-items:center; gap:10px; }
+.tossTeamBubble{ width:70px; height:70px; border-radius:999px; display:grid; place-items:center; font-weight:900; font-size:24px; color:#fff; }
+.tossTeamName{ font-weight:800; }
+.tossPick{ width:70px; height:70px; border-radius:999px; display:grid; place-items:center; background:#e53935; color:#fff; font-size:28px; }
+.tossCard.sel{ outline:3px solid rgba(229,57,53,.35); }
+.tossNote{ margin-top:14px; color: rgba(0,0,0,.55); font-size:12px; }
+/* make toss pane visually light even inside dark wizard */
+.wizCard .tossWrap{ background:#ffffff; border-radius:18px; padding:12px; }
+/* =========================
+   Home: Matches tabs (CREX/Cricbuzz style)
+   ========================= */
+
+.matchesCard{ overflow:hidden; }
+
+.segTabs{
+  display:flex;
+  gap:8px;
+  padding:10px;
+  margin-top:10px;
+  border-radius:999px;
+  border:1px solid rgba(11,18,32,.06);
+  background: rgba(255,255,255,.70);
+  box-shadow: var(--shadow2);
+}
+
+.segBtn{
+  flex:1;
+  height:38px;
+  border-radius:999px;
+  border:1px solid rgba(11,18,32,.08);
+  background: rgba(255,255,255,.85);
+  font-weight:900;
+  font-size:13px;
+  cursor:pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .08s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.segBtn:active{ transform: scale(.98); }
+.segBtn.active{
+  border-color: rgba(31,107,255,.55);
+  background: linear-gradient(135deg, rgba(31,107,255,.95), rgba(14,165,233,.88));
+  color:#fff;
+  box-shadow: 0 12px 24px rgba(31,107,255,.18);
+}
+
+.mRow{
+  display:flex;
+  align-items:stretch;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px;
+  border-radius:18px;
+  border:1px solid rgba(11,18,32,.06);
+  background: rgba(255,255,255,.92);
+  box-shadow: var(--shadow2);
+}
+
+.mL{ flex:1; min-width:0; }
+
+.mTop{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:6px;
+}
+
+.mDot{ width:8px; height:8px; border-radius:999px; display:inline-block; }
+.mDot.live{ background: var(--live); box-shadow: 0 0 0 3px rgba(225,29,72,.14); }
+.mDot.up{ background: var(--warn); box-shadow: 0 0 0 3px rgba(245,158,11,.16); }
+.mDot.done{ background: var(--ok); box-shadow: 0 0 0 3px rgba(22,163,74,.14); }
+
+.mSt{ font-size:12px; font-weight:950; letter-spacing:.2px; }
+.mSt.live{ color: var(--live); }
+.mSt.up{ color: var(--warn); }
+.mSt.done{ color: var(--ok); }
+
+.mMeta{ font-size:12px; color:var(--muted); }
+
+.mTeams{ font-size:14px; font-weight:900; line-height:1.15; }
+.mTeams .vs{ font-weight:800; opacity:.7; margin:0 6px; }
+
+.mSub{ font-size:12px; color:var(--muted); margin-top:6px; line-height:1.35; }
+.mSub.done{ color: rgba(22,163,74,.95); font-weight:800; }
+
+.mActions{ display:flex; flex-direction:column; gap:8px; align-items:flex-end; justify-content:center; }
+.mBtn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height:36px;
+  padding:0 12px;
+  border-radius:14px;
+  border:1px solid rgba(11,18,32,.10);
+  background: rgba(255,255,255,.90);
+  font-weight:900;
+}
+.mBtn.ghost{ background: rgba(241,245,255,.95); border-color: rgba(31,107,255,.18); }
+
+@media (max-width: 420px){
+  .segTabs{ padding:8px; }
+  .segBtn{ height:36px; font-size:12px; }
+  .mRow{ padding:10px; }
+  .mActions{ gap:6px; }
+  .mBtn{ height:34px; }
+}
+
+
+
+
+/* ✅ Setup Wizard (new buttons) */
+.wizCardBtn{
+  width:100%;
+  background:#fff;
+  color:#111;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:14px;
+  padding:14px 12px;
+  text-align:center;
+  cursor:pointer;
+  box-shadow:0 10px 30px rgba(0,0,0,.18);
+}
+.wizCardBtn.on{
+  border-color: rgba(58,160,255,.95);
+  box-shadow:0 14px 40px rgba(58,160,255,.25);
+  background: rgba(58,160,255,.16);
+}
+.wizCardBtn:active{ transform: translateY(1px); }
+
+
+/* --- Innings Break (UI-only) --- */
+.ibProgress{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:10px;
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background: rgba(255,255,255,.6);
+  backdrop-filter: blur(8px);
+}
+.ibDot{
+  width:10px; height:10px;
+  border-radius:50%;
+  border:2px solid var(--text);
+  opacity:.5;
+}
+.ibDot.done{
+  background: var(--ok);
+  border-color: var(--ok);
+  opacity:1;
+  box-shadow: 0 0 0 4px rgba(0,0,0,.05);
+}
+.ibTxt{ font-size:12px; color: var(--muted); }
+.ibSep{ opacity:.5; }
+.ibStats{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ibCard{ padding:10px; border:1px solid var(--border); border-radius:14px; }
+
+@media (max-width: 520px){
+  .ibStats{ grid-template-columns: 1fr; }
+}
+
+
+/* ===== Phase-1 Insights (This Over chips) ===== */
+.p1Insights{margin:10px 0 8px}
+.p1Banner{padding:8px 12px;border-radius:12px;background:#e9f2ff;font-weight:700;margin-bottom:8px}
+.p1OverStrip{padding:8px 12px;border-radius:12px;background:rgba(0,0,0,.04);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.p1OverT{font-weight:800;margin-right:6px}
+.p1Chip{min-width:26px;height:26px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;background:#e6f7ef;color:#0f5132}
+.p1Chip.r{background:#e6f7ef;color:#0f5132}
+.p1Chip.w{background:#ffe7e7;color:#b02a37}
+.p1Chip.wd,.p1Chip.nb{background:#fff3cd;color:#664d03}
+.p1OverSummary{padding:8px 12px;border-radius:12px;background:rgba(0,0,0,.03);font-weight:700;margin-top:6px}
+/* ===== /Phase-1 ===== */
+
+/* ===== Final Result View (Scorer) ===== */
+.resultView{padding:16px;border-radius:18px}
+.finalResultLine{
+  font-weight:800;
+  font-size:16px;
+  padding:12px 12px;
+  border-radius:14px;
+  background: linear-gradient(135deg, rgba(43,108,255,.12), rgba(0,200,150,.10));
+  border:1px solid rgba(0,0,0,.06);
+}
+.finalScoreLines .line{
+  margin-top:6px;
+  padding:10px 12px;
+  border-radius:14px;
+  background: rgba(255,255,255,.7);
+  border:1px solid rgba(0,0,0,.06);
+  font-weight:700;
+}
+.awardsGrid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap:10px;
+}
+@media (max-width: 900px){
+  .awardsGrid{grid-template-columns: 1fr}
+}
+.awardCard{
+  padding:12px 12px;
+  border-radius:16px;
+  border:1px solid rgba(0,0,0,.06);
+  background: rgba(255,255,255,.75);
+}
+.awardCard .awardTitle{font-weight:900}
+.awardCard .awardName{font-weight:900;font-size:16px;margin-top:6px}
+.awardCard .awardMeta{font-weight:700;margin-top:4px;opacity:.85}
+.awardMom{background: linear-gradient(135deg, rgba(255,193,7,.18), rgba(255,87,34,.10));}
+.awardSix{background: linear-gradient(135deg, rgba(156,39,176,.16), rgba(3,169,244,.10));}
+.awardBowler{background: linear-gradient(135deg, rgba(76,175,80,.16), rgba(0,150,136,.10));}
+
+/* ===== Role chips (Squad / XI) ===== */
+.wizPSub{ margin-top:4px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.chip{ display:inline-flex; align-items:center; justify-content:center;
+  height:22px; padding:0 8px; border-radius:999px; font-size:12px; font-weight:900;
+  border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color:#eaf2ff;
+}
+.chip.c{ background: rgba(255,82,82,.18); border-color: rgba(255,82,82,.35); }
+.chip.vc{ background: rgba(255,152,0,.18); border-color: rgba(255,152,0,.35); }
+.chip.wk{ background: rgba(63,81,181,.18); border-color: rgba(63,81,181,.35); }
+.chip.role{ letter-spacing:.2px; }
+.chip.role.BAT{ background: rgba(33,150,243,.18); border-color: rgba(33,150,243,.35); }
+.chip.role.BOWL{ background: rgba(76,175,80,.18); border-color: rgba(76,175,80,.35); }
+.chip.role.AR{ background: rgba(156,39,176,.18); border-color: rgba(156,39,176,.35); }
+.chip.role.WK{ background: rgba(96,125,139,.18); border-color: rgba(96,125,139,.35); }
+
+.rolePills{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.rolePill{ height:26px; padding:0 10px; border-radius:999px; font-weight:900; font-size:12px;
+  border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color:#eaf2ff;
+}
+.rolePill.bat{ background: rgba(33,150,243,.14); border-color: rgba(33,150,243,.28); }
+.rolePill.bowl{ background: rgba(76,175,80,.14); border-color: rgba(76,175,80,.28); }
+.rolePill.ar{ background: rgba(156,39,176,.14); border-color: rgba(156,39,176,.28); }
+.rolePill.wk{ background: rgba(96,125,139,.14); border-color: rgba(96,125,139,.28); }
+
+
+
+/* ===== FIX: XI list scroll inside modal ===== */
+.wizList{
+  max-height: min(62vh, 520px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 6px;
+}
+.wizList::-webkit-scrollbar{ width: 10px; }
+.wizList::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.12); border-radius: 10px; }
+.wizList::-webkit-scrollbar-track{ background: rgba(255,255,255,.04); border-radius: 10px; }
+
+
+
+/* ===== FIX: Stats Squad dark + readable (match Scorer style) ===== */
+.card.squadDark{
+  background: linear-gradient(180deg, rgba(10,18,34,.96), rgba(7,12,24,.96));
+  border: 1px solid rgba(255,255,255,.10);
+  color: #eaf2ff;
+}
+.card.squadDark .sep{ border-top: 1px solid rgba(255,255,255,.10); }
+.card.squadDark .muted{ color: rgba(234,242,255,.70); }
+.card.squadDark .tag{ background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.12); color:#eaf2ff; }
+
+.card.squadDark .squadItem{
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.card.squadDark .squadItem:hover{ background: rgba(255,255,255,.06); }
+.card.squadDark b{ color:#ffffff; }
+
+/* chips on dark */
+.card.squadDark .chip{
+  color:#eaf2ff;
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.12);
+}
+.card.squadDark .chip.c{ background: rgba(255,82,82,.18); border-color: rgba(255,82,82,.35); }
+.card.squadDark .chip.vc{ background: rgba(255,152,0,.18); border-color: rgba(255,152,0,.35); }
+.card.squadDark .chip.wk{ background: rgba(63,81,181,.18); border-color: rgba(63,81,181,.35); }
+.card.squadDark .chip.role.BAT{ background: rgba(33,150,243,.18); border-color: rgba(33,150,243,.35); }
+.card.squadDark .chip.role.BOWL{ background: rgba(76,175,80,.18); border-color: rgba(76,175,80,.35); }
+.card.squadDark .chip.role.AR{ background: rgba(156,39,176,.18); border-color: rgba(156,39,176,.35); }
+.card.squadDark .chip.role.WK{ background: rgba(96,125,139,.18); border-color: rgba(96,125,139,.35); }
+
+/* role pills on dark */
+.card.squadDark .rolePill{
+  color:#eaf2ff;
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.12);
+}
+
+
+
+/* ===== HOTFIX: Squad page white background issue ===== */
+/* Force dark readable panel only inside Player Statistics Squad view */
+body[data-page="stats"] .card.squadDark{
+  background: linear-gradient(180deg, rgba(10,18,34,.96), rgba(7,12,24,.96)) !important;
+  color: #eaf2ff !important;
+}
+
+body[data-page="stats"] .card.squadDark b,
+body[data-page="stats"] .card.squadDark .muted{
+  color: #eaf2ff !important;
+}
+
+/* Ensure list items visible */
+body[data-page="stats"] .card.squadDark .squadItem{
+  background: rgba(255,255,255,.06) !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+}
+
+/* Role chips visibility */
+body[data-page="stats"] .card.squadDark .chip{
+  background: rgba(255,255,255,.10) !important;
+  color: #ffffff !important;
+  border-color: rgba(255,255,255,.25) !important;
+}
+
+
+
+/* =========================================================
+   GLOBAL DARK + COLORFUL THEME (APP-WIDE)
+   - UI ONLY: no scoring / firebase / logic touched
+   - Put at END so it wins specificity
+   ========================================================= */
+
+:root{
+  --bg0: #070b18;
+  --bg1: #0b1430;
+  --panel: rgba(255,255,255,.06);
+  --panel2: rgba(255,255,255,.08);
+  --border: rgba(255,255,255,.12);
+  --txt: #eaf2ff;
+  --muted: rgba(234,242,255,.70);
+
+  --a1:#21c1ff;  /* cyan */
+  --a2:#7c4dff;  /* violet */
+  --a3:#ff4d6d;  /* pink-red */
+  --a4:#ffb703;  /* amber */
+  --a5:#2ee59d;  /* mint */
+}
+
+html, body{
+  background: radial-gradient(1200px 800px at 20% 10%, rgba(33,193,255,.18), transparent 60%),
+              radial-gradient(1000px 700px at 85% 15%, rgba(124,77,255,.18), transparent 60%),
+              radial-gradient(900px 700px at 70% 90%, rgba(46,229,157,.12), transparent 60%),
+              linear-gradient(180deg, var(--bg1), var(--bg0)) !important;
+  color: var(--txt) !important;
+}
+
+a{ color: var(--a1); }
+.muted{ color: var(--muted) !important; }
+
+/* Top bars / headers that were white */
+header, .topbar, .appHeader, .pageHeader{
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03)) !important;
+  border-bottom: 1px solid var(--border) !important;
+  color: var(--txt) !important;
+  backdrop-filter: blur(14px);
+}
+
+/* Cards */
+.card, .panel, .box, .tile{
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04)) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--txt) !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35) !important;
+}
+
+/* Lists / rows */
+.item, .row, .listRow, .matchRow{
+  background: rgba(255,255,255,.04) !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+  color: var(--txt) !important;
+}
+
+/* Inputs */
+input, select, textarea{
+  background: rgba(255,255,255,.06) !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  color: var(--txt) !important;
+}
+input::placeholder, textarea::placeholder{ color: rgba(234,242,255,.55) !important; }
+
+/* Buttons */
+button, .btn{
+  background: rgba(255,255,255,.08) !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  color: var(--txt) !important;
+}
+button:hover, .btn:hover{ background: rgba(255,255,255,.12) !important; }
+
+.btn.primary, .btnPrimary, .primaryBtn{
+  background: linear-gradient(135deg, rgba(33,193,255,.28), rgba(124,77,255,.22)) !important;
+  border-color: rgba(33,193,255,.35) !important;
+}
+
+/* Pills / tabs */
+.pill, .tab, .segBtn, .xiTab{
+  background: rgba(255,255,255,.06) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  color: var(--txt) !important;
+}
+.pill.on, .tab.on, .segBtn.on, .xiTab.on{
+  background: linear-gradient(135deg, rgba(33,193,255,.26), rgba(46,229,157,.18)) !important;
+  border-color: rgba(33,193,255,.35) !important;
+}
+
+/* Bottom nav */
+.bottomNav, .bottomBar, .navBottom{
+  background: rgba(10,18,34,.72) !important;
+  border-top: 1px solid rgba(255,255,255,.10) !important;
+  backdrop-filter: blur(16px);
+}
+
+/* Tables */
+table{ color: var(--txt) !important; }
+th{
+  background: rgba(255,255,255,.06) !important;
+  border-bottom: 1px solid rgba(255,255,255,.12) !important;
+}
+td{
+  border-bottom: 1px solid rgba(255,255,255,.08) !important;
+}
+
+/* Make role pills more colorful */
+.rolePill.bat{ background: rgba(33,193,255,.18) !important; border-color: rgba(33,193,255,.32) !important; }
+.rolePill.bowl{ background: rgba(46,229,157,.18) !important; border-color: rgba(46,229,157,.32) !important; }
+.rolePill.ar{ background: rgba(124,77,255,.18) !important; border-color: rgba(124,77,255,.32) !important; }
+.rolePill.wk{ background: rgba(255,183,3,.16) !important; border-color: rgba(255,183,3,.30) !important; }
+
+/* Chips */
+.chip.c{ background: rgba(255,77,109,.20) !important; border-color: rgba(255,77,109,.38) !important; }
+.chip.vc{ background: rgba(255,183,3,.18) !important; border-color: rgba(255,183,3,.34) !important; }
+.chip.wk{ background: rgba(33,193,255,.18) !important; border-color: rgba(33,193,255,.34) !important; }
+
+/* Scrollbars (nice on dark) */
+*::-webkit-scrollbar{ width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.14); border-radius: 10px; }
+*::-webkit-scrollbar-track{ background: rgba(255,255,255,.05); border-radius: 10px; }
