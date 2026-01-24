@@ -46,7 +46,6 @@
   },
   "venues": [
     "Indore",
-    "Dhar",
     "Jabalpur",
     "Gwalior"
   ],
@@ -64,154 +63,242 @@
       "group": "A",
       "time": "09:00",
       "a": "Sehore",
-      "b": "Dewas"
+      "b": "Dewas",
+      "dateLabel": "1 Feb 2026",
+      "dateISO": "2026-02-01",
+      "venue": "Indore",
+      "ground": "The Oval Cricket Ground, Indore"
     },
     {
       "matchId": "A2",
       "group": "A",
       "time": "10:15",
       "a": "Narmadapuram",
-      "b": "Head Office"
+      "b": "Head Office",
+      "dateLabel": "1 Feb 2026",
+      "dateISO": "2026-02-01",
+      "venue": "Indore",
+      "ground": "The Oval Cricket Ground, Indore"
     },
     {
       "matchId": "A3",
       "group": "A",
       "time": "11:30",
       "a": "Dewas",
-      "b": "Bhopal"
+      "b": "Bhopal",
+      "dateLabel": "1 Feb 2026",
+      "dateISO": "2026-02-01",
+      "venue": "Indore",
+      "ground": "The Oval Cricket Ground, Indore"
     },
     {
       "matchId": "A4",
       "group": "A",
       "time": "12:45",
       "a": "Head Office",
-      "b": "Sehore"
+      "b": "Sehore",
+      "dateLabel": "1 Feb 2026",
+      "dateISO": "2026-02-01",
+      "venue": "Indore",
+      "ground": "The Oval Cricket Ground, Indore"
     },
     {
       "matchId": "A5",
       "group": "A",
       "time": "14:00",
       "a": "Bhopal",
-      "b": "Narmadapuram"
+      "b": "Narmadapuram",
+      "dateLabel": "1 Feb 2026",
+      "dateISO": "2026-02-01",
+      "venue": "Indore",
+      "ground": "The Oval Cricket Ground, Indore"
     },
     {
       "matchId": "B1",
       "group": "B",
       "time": "09:00",
       "a": "Ujjain",
-      "b": "Mandsaur"
+      "b": "Mandsaur",
+      "dateLabel": "24 Jan 2026",
+      "dateISO": "2026-01-24",
+      "venue": "Indore",
+      "ground": "The Oval Cricket Ground, Indore"
     },
     {
       "matchId": "B2",
       "group": "B",
       "time": "10:15",
       "a": "Khargone",
-      "b": "Dhar"
+      "b": "Dhar",
+      "dateLabel": "24 Jan 2026",
+      "dateISO": "2026-01-24",
+      "venue": "Indore",
+      "ground": "The Oval Cricket Ground, Indore"
     },
     {
       "matchId": "B3",
       "group": "B",
       "time": "11:30",
       "a": "Jhabua",
-      "b": "Ujjain"
+      "b": "Ujjain",
+      "dateLabel": "24 Jan 2026",
+      "dateISO": "2026-01-24",
+      "venue": "Indore",
+      "ground": "The Oval Cricket Ground, Indore"
     },
     {
       "matchId": "B4",
       "group": "B",
       "time": "12:45",
       "a": "Mandsaur",
-      "b": "Khargone"
+      "b": "Khargone",
+      "dateLabel": "24 Jan 2026",
+      "dateISO": "2026-01-24",
+      "venue": "Indore",
+      "ground": "The Oval Cricket Ground, Indore"
     },
     {
       "matchId": "B5",
       "group": "B",
       "time": "14:00",
       "a": "Dhar",
-      "b": "Jhabua"
+      "b": "Jhabua",
+      "dateLabel": "24 Jan 2026",
+      "dateISO": "2026-01-24",
+      "venue": "Indore",
+      "ground": "The Oval Cricket Ground, Indore"
     },
     {
       "matchId": "C1",
       "group": "C",
       "time": "09:00",
       "a": "Rewa",
-      "b": "Shahdol"
+      "b": "Shahdol",
+      "dateLabel": "24 Jan 2026",
+      "dateISO": "2026-01-24",
+      "venue": "Jabalpur",
+      "ground": "Velodrome Stadium, Jabalpur"
     },
     {
       "matchId": "C2",
       "group": "C",
       "time": "10:15",
       "a": "Chhindwara",
-      "b": "Mandla"
+      "b": "Mandla",
+      "dateLabel": "24 Jan 2026",
+      "dateISO": "2026-01-24",
+      "venue": "Jabalpur",
+      "ground": "Velodrome Stadium, Jabalpur"
     },
     {
       "matchId": "C3",
       "group": "C",
       "time": "11:30",
       "a": "Shahdol",
-      "b": "Sidhi"
+      "b": "Sidhi",
+      "dateLabel": "24 Jan 2026",
+      "dateISO": "2026-01-24",
+      "venue": "Jabalpur",
+      "ground": "Velodrome Stadium, Jabalpur"
     },
     {
       "matchId": "C4",
       "group": "C",
       "time": "12:45",
       "a": "Mandla",
-      "b": "Jabalpur"
+      "b": "Jabalpur",
+      "dateLabel": "24 Jan 2026",
+      "dateISO": "2026-01-24",
+      "venue": "Jabalpur",
+      "ground": "Velodrome Stadium, Jabalpur"
     },
     {
       "matchId": "C5",
       "group": "C",
       "time": "14:00",
       "a": "Sidhi",
-      "b": "Rewa"
+      "b": "Rewa",
+      "dateLabel": "24 Jan 2026",
+      "dateISO": "2026-01-24",
+      "venue": "Jabalpur",
+      "ground": "Velodrome Stadium, Jabalpur"
     },
     {
       "matchId": "C6",
       "group": "C",
       "time": "15:15",
       "a": "Jabalpur",
-      "b": "Chhindwara"
+      "b": "Chhindwara",
+      "dateLabel": "24 Jan 2026",
+      "dateISO": "2026-01-24",
+      "venue": "Jabalpur",
+      "ground": "Velodrome Stadium, Jabalpur"
     },
     {
       "matchId": "D1",
       "group": "D",
       "time": "09:00",
       "a": "Tikamgarh",
-      "b": "Gwalior"
+      "b": "Gwalior",
+      "dateLabel": "24 Jan 2026",
+      "dateISO": "2026-01-24",
+      "venue": "Gwalior",
+      "ground": "Jiwaji University Ground, Gwalior"
     },
     {
       "matchId": "D2",
       "group": "D",
       "time": "10:15",
       "a": "Damoh",
-      "b": "Satna"
+      "b": "Satna",
+      "dateLabel": "24 Jan 2026",
+      "dateISO": "2026-01-24",
+      "venue": "Gwalior",
+      "ground": "Jiwaji University Ground, Gwalior"
     },
     {
       "matchId": "D3",
       "group": "D",
       "time": "11:30",
       "a": "Gwalior",
-      "b": "Shivpuri"
+      "b": "Shivpuri",
+      "dateLabel": "24 Jan 2026",
+      "dateISO": "2026-01-24",
+      "venue": "Gwalior",
+      "ground": "Jiwaji University Ground, Gwalior"
     },
     {
       "matchId": "D4",
       "group": "D",
       "time": "12:45",
       "a": "Satna",
-      "b": "Chhatarpur"
+      "b": "Chhatarpur",
+      "dateLabel": "24 Jan 2026",
+      "dateISO": "2026-01-24",
+      "venue": "Gwalior",
+      "ground": "Jiwaji University Ground, Gwalior"
     },
     {
       "matchId": "D5",
       "group": "D",
       "time": "14:00",
       "a": "Shivpuri",
-      "b": "Tikamgarh"
+      "b": "Tikamgarh",
+      "dateLabel": "24 Jan 2026",
+      "dateISO": "2026-01-24",
+      "venue": "Gwalior",
+      "ground": "Jiwaji University Ground, Gwalior"
     },
     {
       "matchId": "D6",
       "group": "D",
       "time": "15:15",
       "a": "Chhatarpur",
-      "b": "Damoh"
+      "b": "Damoh",
+      "dateLabel": "24 Jan 2026",
+      "dateISO": "2026-01-24",
+      "venue": "Gwalior",
+      "ground": "Jiwaji University Ground, Gwalior"
     },
     {
       "matchId": "FNL",
@@ -4778,6 +4865,24 @@
       "shortName": null,
       "logoFile": null,
       "group": "A"
+    }
+  },
+  "groupMeta": {
+    "A": {
+      "dateLabel": "1st February 2026",
+      "ground": "The Oval Cricket Ground, Indore"
+    },
+    "B": {
+      "dateLabel": "24th January 2026",
+      "ground": "The Oval Cricket Ground, Indore"
+    },
+    "C": {
+      "dateLabel": "24th January 2026",
+      "ground": "Velodrome Stadium, Jabalpur"
+    },
+    "D": {
+      "dateLabel": "24th January 2026",
+      "ground": "Jiwaji University Ground, Gwalior"
     }
   }
 }

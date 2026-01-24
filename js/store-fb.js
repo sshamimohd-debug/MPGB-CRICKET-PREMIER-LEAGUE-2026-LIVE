@@ -55,6 +55,20 @@ export async function ensureTournamentDocs(FB, tournament){
         updatedAt: _f.serverTimestamp(),
         createdAt: _f.serverTimestamp()
       });
+    } else {
+      // Keep scoring state intact; only sync schedule/meta fields (date/venue/time/teams/group, etc.)
+      const meta = {
+        group: m.group,
+        time: m.time,
+        a: m.a,
+        b: m.b,
+        date: m.date || null,
+        dateISO: m.dateISO || null,
+        venue: m.venue || null,
+        venueDetail: m.venueDetail || null,
+        updatedAt: _f.serverTimestamp()
+      };
+      await _f.updateDoc(mRef, meta);
     }
   }
 }
@@ -708,4 +722,79 @@ export async function signOutUser(FB){
 export function watchAuth(FB, cb){
   const { _f, auth } = FB;
   return _f.onAuthStateChanged(auth, cb);
+}
+
+// ------------------------------------------------------------
+// Tournament meta helpers (used by scorer wizard / UI)
+// ------------------------------------------------------------
+
+/**
+ * Returns the tournament document meta stored in Firestore.
+ * Useful when squads / squadMeta are updated from Admin panel.
+ */
+export async function getTournamentMeta(FB){
+  const { _f } = FB;
+  const tSnap = await _f.getDoc(tournamentRef(FB));
+  return tSnap.exists() ? (tSnap.data() || {}) : null;
+}
+
+/**
+ * Upserts a player entry for a given team inside tournament.squadMeta (and keeps
+ * tournament.squads (names) in-sync as best-effort).
+ *
+ * This is intentionally conservative: it does NOT change any match state keys.
+ */
+export async function upsertSquadPlayer(FB, teamKey, player){
+  const { _f } = FB;
+  const tRef = tournamentRef(FB);
+  const tSnap = await _f.getDoc(tRef);
+  if(!tSnap.exists()) throw new Error("Tournament doc not found");
+
+  const meta = tSnap.data() || {};
+  const squads = (meta.squads && typeof meta.squads === 'object') ? JSON.parse(JSON.stringify(meta.squads)) : {};
+  const squadMeta = (meta.squadMeta && typeof meta.squadMeta === 'object') ? JSON.parse(JSON.stringify(meta.squadMeta)) : {};
+
+  const team = (teamKey || '').toString().trim();
+  if(!team) throw new Error('teamKey required');
+
+  // Normalize incoming payload
+  const pObj = (typeof player === 'string')
+    ? { name: player }
+    : (player && typeof player === 'object' ? {...player} : null);
+  if(!pObj) throw new Error('player required');
+
+  const pname = (pObj.name || pObj.playerName || '').toString().trim();
+  const pid = (pObj.playerId || pObj.empId || pObj.id || '').toString().trim();
+  if(!pname && !pid) throw new Error('player name/id required');
+
+  // 1) squads (names)
+  if(!Array.isArray(squads[team])) squads[team] = [];
+  if(pname){
+    const existsName = squads[team].some(x => (x || '').toString().trim().toLowerCase() === pname.toLowerCase());
+    if(!existsName) squads[team].push(pname);
+  }
+
+  // 2) squadMeta (objects)
+  if(!Array.isArray(squadMeta[team])) squadMeta[team] = [];
+  const idx = squadMeta[team].findIndex(x => {
+    if(!x) return false;
+    const xid = (x.playerId || x.empId || x.id || '').toString().trim();
+    const xname = (x.name || x.playerName || '').toString().trim();
+    if(pid && xid && pid === xid) return true;
+    if(pname && xname && pname.toLowerCase() === xname.toLowerCase()) return true;
+    return false;
+  });
+  if(idx >= 0){
+    squadMeta[team][idx] = { ...squadMeta[team][idx], ...pObj };
+  }else{
+    squadMeta[team].push(pObj);
+  }
+
+  await _f.updateDoc(tRef, {
+    squads,
+    squadMeta,
+    updatedAt: _f.serverTimestamp()
+  });
+
+  return { squads, squadMeta };
 }

@@ -5,6 +5,73 @@ export function setActiveNav(key){
   document.querySelectorAll('[data-nav]').forEach(a=>{
     if(a.dataset.nav===key) a.classList.add('active'); else a.classList.remove('active');
   });
+
+  // Global UI boot (logo + splash). UI-only: does not touch scoring/Firebase.
+  try{ ensureBrandLogo(); }catch(e){}
+  try{ showSplashOnce(); }catch(e){}
+}
+
+// Tournament logo handling: attach image into .logo block (fallback safe)
+export function ensureBrandLogo(){
+  const el = document.querySelector('.logo');
+  if(!el) return;
+
+  // If CSS already set a background-image, keep it.
+  const bg = (getComputedStyle(el).backgroundImage || "").toLowerCase();
+  // Many pages use a gradient placeholder. If we detect a gradient, we replace it with the tournament logo.
+  if(bg && bg !== "none" && !bg.includes("gradient")) return;
+
+  // Fallback to app icon as tournament logo.
+  el.style.backgroundImage = "url('assets/icons/icon-72.png')";
+  el.style.backgroundSize = 'cover';
+  el.style.backgroundPosition = 'center';
+  el.style.backgroundRepeat = 'no-repeat';
+}
+
+// Splash popup (once per tab/session)
+export function showSplashOnce(){
+  // Only show on first load of a browsing session.
+  const KEY = 'mpgb_mpl_splash_seen_v1';
+  if(sessionStorage.getItem(KEY) === '1') return;
+  sessionStorage.setItem(KEY, '1');
+
+  // Avoid double mount
+  if(document.getElementById('mplSplash')) return;
+
+  const wrap = document.createElement('div');
+  wrap.id = 'mplSplash';
+  wrap.className = 'mplSplash';
+  wrap.innerHTML = `
+    <div class="mplSplashCard" role="dialog" aria-label="MPGB Premier League">
+      <div class="mplSplashLogo" aria-hidden="true"></div>
+      <div class="mplSplashTitle">MPGB Premier League</div>
+      <div class="mplSplashSub">Cricket Tournament 2025-26</div>
+      <div class="mplSplashDev">App developed by <b>Mohammad Shamim</b></div>
+      <div class="mplSplashHint">Tap anywhere to continue</div>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+
+  // Lock background scroll while splash is visible
+  document.body.classList.add('splashLock');
+
+  // Set logo background (uses same icon)
+  const logo = wrap.querySelector('.mplSplashLogo');
+  if(logo){
+    logo.style.backgroundImage = "url('assets/icons/icon-192.png')";
+  }
+
+  const close = ()=>{
+    wrap.classList.add('hide');
+    document.body.classList.remove('splashLock');
+    try{ document.removeEventListener('keydown', onKey); }catch(e){}
+    setTimeout(()=>{ try{ wrap.remove(); }catch(e){} }, 220);
+  };
+  wrap.addEventListener('click', close, {once:true});
+  const onKey = (e)=>{ if(e.key==='Escape') close(); };
+  document.addEventListener('keydown', onKey);
+
+  // NOTE: No auto-close. User must tap/click to continue.
 }
 export async function loadTournament(){
   const res = await fetch('data/tournament.json', {cache:'no-store'});

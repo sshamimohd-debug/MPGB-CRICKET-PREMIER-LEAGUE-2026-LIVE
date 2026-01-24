@@ -23,8 +23,33 @@ function showState(msg, ok=true){
   const t = await loadTournament();
 
   const scorerLinks = $("scorerLinks");
-  scorerLinks.innerHTML = t.matches.slice(0,8).map(m=>`<a class="pill" href="scorer.html?match=${encodeURIComponent(m.matchId)}">${esc(m.matchId)}</a>`).join("")
-    + `<a class="pill" href="schedule.html">All matches</a>`;
+
+// Render all matches group-wise (A/B/C/D + Knockouts), so scorer can open any fixture.
+const order = ["A","B","C","D","KO"];
+const labelFor = (g)=> g==="KO" ? "Knockouts" : `Group ${g}`;
+const groups = {};
+for(const m of (t.matches||[])){
+  const g = m.group || "—";
+  (groups[g] ||= []).push(m);
+}
+let html = '';
+for(const g of order){
+  if(!groups[g] || !groups[g].length) continue;
+  html += `<div class="muted small" style="width:100%;margin-top:8px">${esc(labelFor(g))}</div>`;
+  html += groups[g].map(m=>{
+    const title = m.label ? `${m.matchId} • ${m.label}` : m.matchId;
+    return `<a class="pill" title="${esc(title)}" href="scorer.html?match=${encodeURIComponent(m.matchId)}">${esc(m.matchId)}</a>`;
+  }).join("");
+}
+// Any other groups (if added later) also show.
+for(const g of Object.keys(groups)){
+  if(order.includes(g)) continue;
+  html += `<div class="muted small" style="width:100%;margin-top:8px">${esc(labelFor(g))}</div>`;
+  html += groups[g].map(m=>`<a class="pill" href="scorer.html?match=${encodeURIComponent(m.matchId)}">${esc(m.matchId)}</a>`).join("");
+}
+html += `<a class="pill" href="schedule.html">All matches</a>`;
+scorerLinks.innerHTML = html;
+
 
   watchAuth(FB, (user)=>{
     if(user){

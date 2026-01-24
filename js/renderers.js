@@ -72,9 +72,51 @@ export function renderScoreLine(doc){
 
 // CricHeroes-style: Best performances block (Top batters + bowlers)
 export function renderBestPerformers(doc){
-  const st = doc?.state;
+  const st = doc?.state || {};
   const inn = st?.innings || [];
   if(!inn.length) return `<div class="muted small">No performance data yet.</div>`;
+
+  const liveIdx = Math.max(0, Math.min(Number(st.inningsIndex||0), Math.max(0, inn.length-1)));
+  const striker = st.striker || st.strikerName || st?.current?.striker || "";
+  const nonStriker = st.nonStriker || st.nonStrikerName || st?.current?.nonStriker || "";
+  const bowlerNow = st.bowlerNow || st.currentBowler || st?.current?.bowler || "";
+
+  // UI-only: dismissal formatting (does NOT change scoring logic)
+  const formatDismissal = (b)=>{
+    if(!b) return "";
+    if(!b.out) return "not out";
+    const oi = b.outInfo || {};
+    const kind = (oi.kind || b.how || "").toString();
+    const k = kind.toLowerCase();
+    const f = (oi.fielder || "").toString().trim();
+    const bow = (oi.bowler || "").toString().trim();
+    if(k === "bowled") return bow ? `b ${bow}` : "b";
+    if(k === "caught") return `c ${f || "?"}${bow ? ` b ${bow}` : ""}`.trim();
+    if(k === "caught & bowled" || k === "c&b" || k === "caught and bowled") return bow ? `c & b ${bow}` : "c & b";
+    if(k === "lbw") return bow ? `lbw b ${bow}` : "lbw";
+    if(k === "run out") return `run out (${f || "?"})`;
+    if(k === "stumped") return `st †${f || "?"}${bow ? ` b ${bow}` : ""}`.trim();
+    if(k === "hit wicket") return bow ? `hit wicket b ${bow}` : "hit wicket";
+    if(k === "retired hurt") return "retired hurt";
+    return kind || "out";
+  };
+
+  const latestBatterObj = (name)=>{
+    for(let i=inn.length-1;i>=0;i--){
+      const x = inn[i];
+      const b = x?.batters?.[name];
+      if(b) return { b, team: x?.batting || "" };
+    }
+    return null;
+  };
+  const latestBowlerObj = (name)=>{
+    for(let i=inn.length-1;i>=0;i--){
+      const x = inn[i];
+      const bo = x?.bowlers?.[name];
+      if(bo) return { bo, team: x?.bowling || "" };
+    }
+    return null;
+  };
 
   // Aggregate batters and bowlers across innings
   const batAgg = {};
@@ -84,7 +126,6 @@ export function renderBestPerformers(doc){
     for(const [name, b] of Object.entries(x.batters||{})){
       const a = batAgg[name] || { r:0, b:0, f4:0, f6:0, team: x.batting||"" };
       a.r += Number(b.r||0); a.b += Number(b.b||0); a.f4 += Number(b.f4||0); a.f6 += Number(b.f6||0);
-      // keep team if blank
       a.team = a.team || x.batting||"";
       batAgg[name]=a;
     }
@@ -107,30 +148,52 @@ export function renderBestPerformers(doc){
     .sort((a,b)=> (b[1].w - a[1].w) || (a[1].r - b[1].r))
     .slice(0,3);
 
-  const batRows = topBat.length ? topBat.map(([name, b])=>{
-    const sr = b.b>0 ? Math.round((b.r*10000)/b.b)/100 : 0;
+  const batRows = topBat.length ? topBat.map(([name, agg])=>{
+    const sr = agg.b>0 ? Math.round((agg.r*10000)/agg.b)/100 : 0;
+    const lb = latestBatterObj(name);
+    const b = lb?.b;
+    const isBattingNow = !!b && !b.out && ((striker && name===striker) || (nonStriker && name===nonStriker));
+    const dismissalText = b ? formatDismissal(b) : "";
+    const rowClass = `batRow${b?.out ? " isOut" : ""}${isBattingNow ? " isBattingNow" : ""}${(b && !b.out && !isBattingNow) ? " isNotOut" : ""}`;
     return `
-      <tr>
-        <td><b>${esc(name)}</b> <span class="muted small">${esc(b.team||"")}</span></td>
-        <td>${esc(b.r)}</td>
-        <td>${esc(b.b)}</td>
-        <td>${esc(b.f4)}</td>
-        <td>${esc(b.f6)}</td>
+      <tr class="${rowClass}">
+        <td>
+          <div class="row" style="justify-content:space-between; align-items:flex-start; gap:10px">
+            <div>
+              <div class="playerName"><b>${esc(name)}</b> <span class="muted small">${esc(agg.team||lb?.team||"")}</span></div>
+              ${dismissalText ? `<div class="dismissalText ${b?.out ? "" : "notOutText"}">${esc(dismissalText)}</div>` : ``}
+            </div>
+            <div class="row" style="gap:6px; align-items:center">
+              ${b?.out ? `<span class="chip chipOut">OUT</span>` : (isBattingNow ? `<span class="chip chipBat">BAT</span>` : ``)}
+            </div>
+          </div>
+        </td>
+        <td>${esc(agg.r)}</td>
+        <td>${esc(agg.b)}</td>
+        <td>${esc(agg.f4)}</td>
+        <td>${esc(agg.f6)}</td>
         <td>${esc(sr)}</td>
       </tr>`;
   }).join("") : `<tr><td colspan="6" class="muted small">—</td></tr>`;
 
-  const bowlRows = topBowl.length ? topBowl.map(([name, bo])=>{
-    const o = Math.floor((bo.oBalls||0)/6);
-    const bb = (bo.oBalls||0)%6;
+  const bowlRows = topBowl.length ? topBowl.map(([name, agg])=>{
+    const o = Math.floor((agg.oBalls||0)/6);
+    const bb = (agg.oBalls||0)%6;
     const overs = `${o}.${bb}`;
-    const eco = bo.oBalls>0 ? Math.round((bo.r*6*100)/bo.oBalls)/100 : 0;
+    const eco = agg.oBalls>0 ? Math.round((agg.r*6*100)/agg.oBalls)/100 : 0;
+    const isBowlingNow = bowlerNow && name===bowlerNow;
+    const rowClass = `bowlRow${isBowlingNow ? " isBowlingNow" : ""}`;
     return `
-      <tr>
-        <td><b>${esc(name)}</b> <span class="muted small">${esc(bo.team||"")}</span></td>
+      <tr class="${rowClass}">
+        <td>
+          <div class="row" style="justify-content:space-between; align-items:center; gap:10px">
+            <div><b>${esc(name)}</b> <span class="muted small">${esc(agg.team || latestBowlerObj(name)?.team || "")}</span></div>
+            ${isBowlingNow ? `<span class="chip chipBowl">BOWL</span>` : ``}
+          </div>
+        </td>
         <td>${esc(overs)}</td>
-        <td>${esc(bo.r)}</td>
-        <td>${esc(bo.w)}</td>
+        <td>${esc(agg.r)}</td>
+        <td>${esc(agg.w)}</td>
         <td>${esc(eco)}</td>
       </tr>`;
   }).join("") : `<tr><td colspan="5" class="muted small">—</td></tr>`;
@@ -255,22 +318,68 @@ export function renderScorecard(doc){
       </div>
     ` : "";
 
-    const batRows = bats.length ? bats.map(([name, b])=>`
-      <tr>
+    // Dismissal formatting (UI-only). Uses batter.outInfo written by scoring-core.
+    const formatDismissal = (b)=>{
+      if(!b) return "";
+      if(!b.out) return "not out";
+      const oi = b.outInfo || {};
+      const kind = (oi.kind || b.how || "").toString();
+      const k = kind.toLowerCase();
+      const f = (oi.fielder || "").toString().trim();
+      const bow = (oi.bowler || "").toString().trim();
+      if(k === "bowled") return bow ? `b ${bow}` : "b";
+      if(k === "caught"){
+        // if fielder missing, still show bowler credit
+        return `c ${f || "?"}${bow ? ` b ${bow}` : ""}`.trim();
+      }
+      if(k === "caught & bowled" || k === "c&b" || k === "caught and bowled"){
+        return bow ? `c & b ${bow}` : "c & b";
+      }
+      if(k === "lbw") return bow ? `lbw b ${bow}` : "lbw";
+      if(k === "run out") return `run out (${f || "?"})`;
+      if(k === "stumped") return `st †${f || "?"}${bow ? ` b ${bow}` : ""}`.trim();
+      if(k === "hit wicket") return bow ? `hit wicket b ${bow}` : "hit wicket";
+      if(k === "retired hurt") return "retired hurt";
+      // fallback
+      return kind || "out";
+    };
+
+    const batRows = bats.length ? bats.map(([name, b])=>{
+      const isStriker = isLive && striker && name===striker;
+      const isNon = isLive && nonStriker && name===nonStriker;
+      const isBattingNow = !b?.out && (isStriker || isNon);
+      const dismissalText = formatDismissal(b);
+      const rowClass = `batRow${b?.out ? " isOut" : ""}${isBattingNow ? " isBattingNow" : ""}${(!b?.out && !isBattingNow) ? " isNotOut" : ""}`;
+      return `
+      <tr class="${rowClass}">
         <td>
-          <b>${esc(name)}</b>${(isLive && striker && name===striker) ? " *" : ""}
-          ${b.out? `<span class="muted small">(${esc(b.how)})</span>`:""}
+          <div class="row" style="justify-content:space-between; align-items:flex-start; gap:10px">
+            <div>
+              <div class="playerName"><b>${esc(name)}</b>${isStriker ? " <span class=\"star\">*</span>" : ""}</div>
+              <div class="dismissalText ${b?.out ? "" : "notOutText"}">${esc(dismissalText)}</div>
+            </div>
+            <div class="row" style="gap:6px; align-items:center">
+              ${b?.out ? `<span class="chip chipOut">OUT</span>` : (isBattingNow ? `<span class="chip chipBat">BAT</span>` : ``)}
+            </div>
+          </div>
         </td>
         <td>${b.r}</td><td>${b.b}</td><td>${b.f4}</td><td>${b.f6}</td>
-      </tr>
-    `).join("") : `<tr><td colspan="5" class="muted small">No batting entries yet.</td></tr>`;
+      </tr>`;
+    }).join("") : `<tr><td colspan="5" class="muted small">No batting entries yet.</td></tr>`;
     const bowlRows = bowls.length ? bowls.map(([name, bo])=>{
       const o = Math.floor((bo.oBalls||0)/6);
       const bb = (bo.oBalls||0)%6;
       const overs = `${o}.${bb}`;
+      const isBowlingNow = isLive && bowlerNow && name===bowlerNow;
+      const rowClass = `bowlRow${isBowlingNow ? " isBowlingNow" : ""}`;
       return `
-      <tr>
-        <td><b>${esc(name)}</b></td>
+      <tr class="${rowClass}">
+        <td>
+          <div class="row" style="justify-content:space-between; align-items:center; gap:10px">
+            <b>${esc(name)}</b>
+            ${isBowlingNow ? `<span class="chip chipBowl">BOWL</span>` : ``}
+          </div>
+        </td>
         <td>${overs}</td><td>${bo.r||0}</td><td>${bo.w||0}</td><td>${bo.wd||0}</td><td>${bo.nb||0}</td>
       </tr>`;
     }).join("") : `<tr><td colspan="6" class="muted small">No bowling entries yet.</td></tr>`;

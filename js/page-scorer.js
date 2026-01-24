@@ -1,6 +1,6 @@
 import { initScorerWizard } from "./scorer-wizard.js";
 import {setActiveNav, qs, loadTournament, teamDisp} from "./util.js";
-import { getFB, watchMatch, watchAuth, addBall, undoBall, setMatchStatus, resetMatch, setToss, setPlayingXI, setOpeningSetup, finalizeMatchAndComputeAwards, startSecondInnings } from "./store-fb.js";
+import { getFB, watchMatch, watchAuth, addBall, undoBall, setMatchStatus, resetMatch, setToss, setPlayingXI, setOpeningSetup, finalizeMatchAndComputeAwards, startSecondInnings, getTournamentMeta, upsertSquadPlayer } from "./store-fb.js";
 import { renderScoreLine, renderCommentary, deriveAwardsForUI, formatMomDetailLine, deriveResultText } from "./renderers.js";
 
 setActiveNav("scorer");
@@ -37,10 +37,18 @@ function ensureWizard(){
     getDoc: ()=>CURRENT_DOC,
     getTournament: ()=>TOURNAMENT,
     getSquads: ()=>SQUADS,
+    getSquadMeta: ()=> (globalThis.__SQUAD_META || {}),
     setToss,
     setPlayingXI,
     setOpeningSetup,
     setMatchStatus,
+    upsertSquadPlayer,
+    onSquadsUpdated: (next)=>{
+      try{
+        if(next?.squads) SQUADS = next.squads;
+        if(next?.squadMeta) globalThis.__SQUAD_META = next.squadMeta;
+      }catch(e){}
+    },
     onDone: ()=>{
       // after wizard done, we keep normal scorer UI as-is
       showState("Setup complete. Ab scoring start kar sakte ho.", true);
@@ -653,16 +661,25 @@ function ensureDropdowns(doc){
   const batXI = playingXIOf(st, batting);
   const bowlXI = playingXIOf(st, bowling);
 
-  const batList = batXI || squadOf(batting);
-  const bowlList = bowlXI || squadOf(bowling);
-
-  fillSelect($("batter"), batList, `Select striker (${batting})...`);
-  fillSelect($("nonStriker"), batList, `Select non-striker (${batting})...`);
-  fillSelect($("bowler"), bowlList, `Select bowler (${bowling})...`);
-
-  // ✅ Auto-apply saved onField (wizard/opening setup) so scoring can start immediately
   const inn = currentInnings(doc);
   const of = inn?.onField || {};
+
+  // 🔒 IMPORTANT: During live scoring, striker/non-striker change dropdowns should ONLY show
+  // the current batsmen on the field (so someone can't bring a new batter without wicket flow).
+  // If onField is not set yet (before start), fall back to full playing XI / squad.
+  const fullBatList = batXI || squadOf(batting);
+  const fullBowlList = bowlXI || squadOf(bowling);
+  const onFieldBatters = [
+    (of.striker || "").trim(),
+    (of.nonStriker || "").trim(),
+  ].filter(Boolean);
+  const liveBatList = onFieldBatters.length ? Array.from(new Set(onFieldBatters)) : fullBatList;
+
+  fillSelect($("batter"), liveBatList, `Select striker (${batting})...`);
+  fillSelect($("nonStriker"), liveBatList, `Select non-striker (${batting})...`);
+  fillSelect($("bowler"), fullBowlList, `Select bowler (${bowling})...`);
+
+  // ✅ Auto-apply saved onField (wizard/opening setup) so scoring can start immediately
   const bSel = $("batter");
   const nSel = $("nonStriker");
   const boSel = $("bowler");
@@ -672,11 +689,11 @@ function ensureDropdowns(doc){
   if(boSel && of.bowler) boSel.value = of.bowler;
 
   // Fallback: if still blank, pick first sensible defaults
-  if(bSel && !bSel.value && Array.isArray(batList) && batList.length) bSel.value = batList[0];
-  if(nSel && (!nSel.value || nSel.value===bSel?.value) && Array.isArray(batList) && batList.length>1){
-    nSel.value = batList.find(x=>x!==bSel.value) || batList[1];
+  if(bSel && !bSel.value && Array.isArray(liveBatList) && liveBatList.length) bSel.value = liveBatList[0];
+  if(nSel && (!nSel.value || nSel.value===bSel?.value) && Array.isArray(liveBatList) && liveBatList.length>1){
+    nSel.value = liveBatList.find(x=>x!==bSel.value) || liveBatList[1];
   }
-  if(boSel && !boSel.value && Array.isArray(bowlList) && bowlList.length) boSel.value = bowlList[0];
+  if(boSel && !boSel.value && Array.isArray(fullBowlList) && fullBowlList.length) boSel.value = fullBowlList[0];
 }
 
 function fmtOversFromBalls(balls){
@@ -1756,9 +1773,20 @@ function render(doc){
   }
 
   if(!TOURNAMENT){
-    loadTournament(FB).then(t=>{
+    // Load base tournament from JSON, then (if available) merge Firestore tournament meta
+    loadTournament(FB).then(async (t)=>{
       TOURNAMENT = t;
       SQUADS = t?.squads || {};
+      try{
+        const meta = await getTournamentMeta(FB);
+        if(meta?.squads && typeof meta.squads === 'object'){
+          SQUADS = meta.squads;
+        }
+        if(meta?.squadMeta && typeof meta.squadMeta === 'object'){
+          // Make roles/c/wk available in wizard UI
+          globalThis.__SQUAD_META = meta.squadMeta;
+        }
+      }catch(e){}
     }).catch(()=>{});
   }
 

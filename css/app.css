@@ -2,6 +2,9 @@
 /* ===== Scorer Setup Wizard (mobile operator) ===== */
 /* Wizard open: prevent background scroll (mobile stability) */
 body.wiz-open{ overflow:hidden; }
+/* Splash visible: prevent background scroll */
+body.splashLock{ overflow:hidden; }
+
 .wiz{ position:fixed; inset:0; z-index:9999; display:flex; align-items:center; justify-content:center;
   padding:16px;
   /* Darker overlay so underlying page doesn't show as grey side panels on wide screens */
@@ -661,129 +664,6 @@ body[data-page="stats"] .card.squadDark .chip{
 
 
 
-/* =========================================================
-   GLOBAL DARK + COLORFUL THEME (APP-WIDE)
-   - UI ONLY: no scoring / firebase / logic touched
-   - Put at END so it wins specificity
-   ========================================================= */
-
-:root{
-  --bg0: #070b18;
-  --bg1: #0b1430;
-  --panel: rgba(255,255,255,.06);
-  --panel2: rgba(255,255,255,.08);
-  --border: rgba(255,255,255,.12);
-  --txt: #eaf2ff;
-  --muted: rgba(234,242,255,.70);
-
-  --a1:#21c1ff;  /* cyan */
-  --a2:#7c4dff;  /* violet */
-  --a3:#ff4d6d;  /* pink-red */
-  --a4:#ffb703;  /* amber */
-  --a5:#2ee59d;  /* mint */
-}
-
-html, body{
-  background: radial-gradient(1200px 800px at 20% 10%, rgba(33,193,255,.18), transparent 60%),
-              radial-gradient(1000px 700px at 85% 15%, rgba(124,77,255,.18), transparent 60%),
-              radial-gradient(900px 700px at 70% 90%, rgba(46,229,157,.12), transparent 60%),
-              linear-gradient(180deg, var(--bg1), var(--bg0)) !important;
-  color: var(--txt) !important;
-}
-
-a{ color: var(--a1); }
-.muted{ color: var(--muted) !important; }
-
-/* Top bars / headers that were white */
-header, .topbar, .appHeader, .pageHeader{
-  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03)) !important;
-  border-bottom: 1px solid var(--border) !important;
-  color: var(--txt) !important;
-  backdrop-filter: blur(14px);
-}
-
-/* Cards */
-.card, .panel, .box, .tile{
-  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04)) !important;
-  border: 1px solid var(--border) !important;
-  color: var(--txt) !important;
-  box-shadow: 0 10px 30px rgba(0,0,0,.35) !important;
-}
-
-/* Lists / rows */
-.item, .row, .listRow, .matchRow{
-  background: rgba(255,255,255,.04) !important;
-  border: 1px solid rgba(255,255,255,.08) !important;
-  color: var(--txt) !important;
-}
-
-/* Inputs */
-input, select, textarea{
-  background: rgba(255,255,255,.06) !important;
-  border: 1px solid rgba(255,255,255,.14) !important;
-  color: var(--txt) !important;
-}
-input::placeholder, textarea::placeholder{ color: rgba(234,242,255,.55) !important; }
-
-/* Buttons */
-button, .btn{
-  background: rgba(255,255,255,.08) !important;
-  border: 1px solid rgba(255,255,255,.14) !important;
-  color: var(--txt) !important;
-}
-button:hover, .btn:hover{ background: rgba(255,255,255,.12) !important; }
-
-.btn.primary, .btnPrimary, .primaryBtn{
-  background: linear-gradient(135deg, rgba(33,193,255,.28), rgba(124,77,255,.22)) !important;
-  border-color: rgba(33,193,255,.35) !important;
-}
-
-/* Pills / tabs */
-.pill, .tab, .segBtn, .xiTab{
-  background: rgba(255,255,255,.06) !important;
-  border: 1px solid rgba(255,255,255,.12) !important;
-  color: var(--txt) !important;
-}
-.pill.on, .tab.on, .segBtn.on, .xiTab.on{
-  background: linear-gradient(135deg, rgba(33,193,255,.26), rgba(46,229,157,.18)) !important;
-  border-color: rgba(33,193,255,.35) !important;
-}
-
-/* Bottom nav */
-.bottomNav, .bottomBar, .navBottom{
-  background: rgba(10,18,34,.72) !important;
-  border-top: 1px solid rgba(255,255,255,.10) !important;
-  backdrop-filter: blur(16px);
-}
-
-/* Tables */
-table{ color: var(--txt) !important; }
-th{
-  background: rgba(255,255,255,.06) !important;
-  border-bottom: 1px solid rgba(255,255,255,.12) !important;
-}
-td{
-  border-bottom: 1px solid rgba(255,255,255,.08) !important;
-}
-
-/* Make role pills more colorful */
-.rolePill.bat{ background: rgba(33,193,255,.18) !important; border-color: rgba(33,193,255,.32) !important; }
-.rolePill.bowl{ background: rgba(46,229,157,.18) !important; border-color: rgba(46,229,157,.32) !important; }
-.rolePill.ar{ background: rgba(124,77,255,.18) !important; border-color: rgba(124,77,255,.32) !important; }
-.rolePill.wk{ background: rgba(255,183,3,.16) !important; border-color: rgba(255,183,3,.30) !important; }
-
-/* Chips */
-.chip.c{ background: rgba(255,77,109,.20) !important; border-color: rgba(255,77,109,.38) !important; }
-.chip.vc{ background: rgba(255,183,3,.18) !important; border-color: rgba(255,183,3,.34) !important; }
-.chip.wk{ background: rgba(33,193,255,.18) !important; border-color: rgba(33,193,255,.34) !important; }
-
-/* Scrollbars (nice on dark) */
-*::-webkit-scrollbar{ width: 10px; height: 10px; }
-*::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.14); border-radius: 10px; }
-*::-webkit-scrollbar-track{ background: rgba(255,255,255,.05); border-radius: 10px; }
-
-
-
 /* ===== DARK THEME OVERRIDES FOR WIZARD LIGHT BLOCKS ===== */
 /* app.css had some intentional light blocks; in dark theme they hurt readability */
 body.theme-dark .wizPane[data-pane="toss"],
@@ -805,3 +685,330 @@ body.theme-dark .tossCard{
   border-color: rgba(255,255,255,.12) !important;
 }
 body.theme-dark .tossNote{ color: rgba(244,247,255,.75) !important; }
+
+/* =========================================================
+   FINAL THEME FIX (Cricbuzz-style, HIGH CONTRAST)
+   - Only UI styles
+   - Targets light-centric custom components (.mRow/.mBtn/.segTabs etc)
+   ========================================================= */
+
+body.theme-dark .segTabs{
+  border-color: rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  box-shadow: 0 10px 24px rgba(0,0,0,.28);
+}
+body.theme-dark .segBtn{
+  border-color: rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: var(--text);
+}
+body.theme-dark .segBtn:hover{ background: rgba(255,255,255,.09); }
+body.theme-dark .segBtn.active{
+  border-color: rgba(106,167,255,.65);
+  background: linear-gradient(135deg, rgba(51,208,255,.95), rgba(75,123,255,.88));
+  color:#fff;
+  box-shadow: 0 14px 34px rgba(75,123,255,.22);
+}
+
+/* Home match rows */
+body.theme-dark .mRow{
+  border-color: rgba(255,255,255,.10);
+  background:
+    radial-gradient(900px 240px at 15% 0%, rgba(51,208,255,.14), rgba(0,0,0,0) 55%),
+    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04));
+}
+body.theme-dark .mMeta,
+body.theme-dark .mSub{ color: rgba(232,238,255,.72); }
+body.theme-dark .mSub.done{ color: rgba(68,209,124,.95); }
+
+body.theme-dark .mBtn{
+  border-color: rgba(255,255,255,.14);
+  background: rgba(255,255,255,.08);
+  color: var(--text);
+}
+body.theme-dark .mBtn:hover{ background: rgba(255,255,255,.12); }
+body.theme-dark .mBtn.ghost{
+  background: rgba(106,167,255,.10);
+  border-color: rgba(106,167,255,.22);
+}
+
+/* Make light blocks usable in dark */
+body.theme-dark .ibProgress,
+body.theme-dark .finalScoreLines .line,
+body.theme-dark .p1Banner{
+  background: rgba(255,255,255,.06) !important;
+  border-color: rgba(255,255,255,.12) !important;
+  color: var(--text) !important;
+}
+body.theme-dark .p1OverStrip,
+body.theme-dark .p1OverSummary{ background: rgba(255,255,255,.05) !important; }
+
+/* Tables inside scorecard/summary */
+body.theme-dark .table,
+body.theme-dark table{ color: var(--text); }
+body.theme-dark th{ background: rgba(255,255,255,.06) !important; }
+body.theme-dark td{ background: rgba(255,255,255,.03) !important; }
+body.theme-dark tr:hover td{ background: rgba(255,255,255,.06) !important; }
+
+/* Inputs + dropdowns */
+body.theme-dark select,
+body.theme-dark input,
+body.theme-dark textarea{
+  background: rgba(255,255,255,.06) !important;
+  border-color: rgba(255,255,255,.14) !important;
+  color: var(--text) !important;
+}
+body.theme-dark option{ background: #0b1020; color: #e8eeff; }
+
+/* Bottom nav readability */
+body.theme-dark .bottomNav{
+  background: linear-gradient(180deg, rgba(7,11,22,.62), rgba(7,11,22,.82)) !important;
+  border-top: 1px solid rgba(255,255,255,.10) !important;
+}
+body.theme-dark .bnItem{ color: rgba(232,238,255,.72) !important; }
+body.theme-dark .bnItem.active{ color: #ffffff !important; }
+
+/* =========================================================
+   PREMIUM DARK THEME FIX (Cricbuzz-like)
+   - Applied because all pages use theme-dark.css
+   - Fixes white cards/buttons/tables in Home/Summary/Scorecard/Stats
+   ========================================================= */
+
+body.theme-dark .segTabs{
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.10);
+}
+body.theme-dark .segBtn{
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.12);
+  color: var(--text);
+}
+body.theme-dark .segBtn.active{
+  border-color: rgba(106,167,255,.70);
+  background: linear-gradient(135deg, rgba(106,167,255,.95), rgba(53,195,255,.80));
+  color:#051020;
+  box-shadow: 0 12px 24px rgba(106,167,255,.20);
+}
+
+body.theme-dark .mRow{
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.04));
+  border-color: rgba(255,255,255,.10);
+}
+body.theme-dark .mMeta,
+body.theme-dark .mSub{ color: rgba(232,238,255,.78); }
+body.theme-dark .mSub.done{ color: rgba(68,209,124,.95); }
+
+body.theme-dark .mBtn{
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  color: var(--text);
+}
+body.theme-dark .mBtn.ghost{
+  background: rgba(255,255,255,.04);
+  border-color: rgba(106,167,255,.25);
+}
+body.theme-dark .mBtn:hover{ background: rgba(255,255,255,.12); }
+
+/* Match tabs/pills on dark */
+body.theme-dark .pill{
+  background: rgba(255,255,255,.06) !important;
+  border-color: rgba(255,255,255,.12) !important;
+  color: var(--text) !important;
+}
+body.theme-dark .pill[style*="border-color"]{
+  box-shadow: 0 0 0 3px rgba(106,167,255,.12);
+}
+
+/* Summary/Scorecard inner tables: remove white fills */
+body.theme-dark table,
+body.theme-dark .table{ color: var(--text); }
+body.theme-dark td,
+body.theme-dark th{
+  background: transparent !important;
+}
+body.theme-dark .table tr{
+  background: rgba(255,255,255,.04);
+}
+body.theme-dark .table tr:hover{ background: rgba(255,255,255,.06); }
+
+/* Any accidental white cards inside content */
+body.theme-dark [style*="background:#fff"],
+body.theme-dark [style*="background: #fff"],
+body.theme-dark [style*="background:white"],
+body.theme-dark [style*="background: white"]{
+  background: rgba(255,255,255,.06) !important;
+  color: var(--text) !important;
+  border-color: rgba(255,255,255,.12) !important;
+}
+
+/* Phase-1 chips / panels adapt to dark */
+body.theme-dark .p1Banner{ background: rgba(255,255,255,.06); color: var(--text); }
+body.theme-dark .p1OverStrip{ background: rgba(255,255,255,.05); }
+body.theme-dark .p1OverSummary{ background: rgba(255,255,255,.05); color: var(--text); }
+
+body.theme-dark .ibProgress,
+body.theme-dark .finalScoreLines .line{
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.12);
+}
+
+/* Bottom nav contrast */
+body.theme-dark .bottomNav{
+  background: linear-gradient(180deg, rgba(7,11,22,.78), rgba(7,11,22,.58)) !important;
+  border-top: 1px solid rgba(255,255,255,.10) !important;
+}
+body.theme-dark .bottomNav .bnItem{ color: rgba(232,238,255,.82); }
+body.theme-dark .bottomNav .bnItem.active{
+  color: var(--text);
+  background: rgba(106,167,255,.12);
+  border: 1px solid rgba(106,167,255,.25);
+}
+
+/* =====================
+   Scorecard – Batting (Real feel)
+   UI-only (no scoring logic changes)
+===================== */
+
+body.theme-dark .table tr.batRow td{ vertical-align: top; }
+
+body.theme-dark .table tr.batRow{
+  background: rgba(255,255,255,.03);
+}
+
+body.theme-dark .table tr.batRow.isBattingNow{
+  background: linear-gradient(90deg, rgba(0,200,255,.16), rgba(140,70,255,.10));
+  box-shadow: 0 0 0 1px rgba(0,200,255,.16) inset;
+}
+
+body.theme-dark .table tr.batRow.isBattingNow td:first-child{
+  position: relative;
+}
+body.theme-dark .table tr.batRow.isBattingNow td:first-child::before{
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 10px;
+  bottom: 10px;
+  width: 4px;
+  border-radius: 6px;
+  background: rgba(0,200,255,.95);
+}
+
+body.theme-dark .playerName{ line-height: 1.15; }
+body.theme-dark .playerName .star{ color: rgba(0,200,255,.95); font-weight: 900; }
+
+body.theme-dark tr.batRow.isOut .playerName{
+  opacity: .72;
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+
+body.theme-dark .dismissalText{
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(232,238,255,.70);
+}
+body.theme-dark .dismissalText.notOutText{
+  color: rgba(80,255,160,.95);
+  font-weight: 700;
+}
+
+body.theme-dark .chip{
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .3px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+}
+body.theme-dark .chipOut{
+  background: rgba(255,60,80,.18);
+  border-color: rgba(255,60,80,.45);
+  color: rgba(255,220,230,1);
+}
+body.theme-dark .chipBat{
+  background: rgba(0,200,255,.18);
+  border-color: rgba(0,200,255,.45);
+  color: rgba(210,245,255,1);
+}
+body.theme-dark .chipBowl{
+  background: rgba(255,200,0,.16);
+  border-color: rgba(255,200,0,.42);
+  color: rgba(255,245,210,1);
+}
+
+body.theme-dark .table tr.bowlRow.isBowlingNow td:first-child{
+  position: relative;
+}
+body.theme-dark .table tr.bowlRow.isBowlingNow td:first-child::before{
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 10px;
+  bottom: 10px;
+  width: 4px;
+  border-radius: 6px;
+  background: rgba(255,200,0,.95);
+}
+
+
+/* =====================
+   Brand Logo + Splash (UI-only)
+   ===================== */
+.logo{
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border: 1px solid rgba(255,255,255,.16);
+  overflow: hidden;
+}
+
+.mplSplash{
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: radial-gradient(1200px 700px at 30% 20%, rgba(70,120,255,.28), rgba(0,0,0,.0)),
+              rgba(0,0,0,.55);
+  backdrop-filter: blur(10px);
+}
+.mplSplash.hide{ opacity:0; transform: scale(.98); transition: .22s ease; }
+
+.mplSplashCard{
+  width: min(420px, 92vw);
+  border-radius: 22px;
+  padding: 18px 18px 16px;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 30px 80px rgba(0,0,0,.45);
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+}
+
+.mplSplashLogo{
+  width: 78px;
+  height: 78px;
+  border-radius: 22px;
+  margin: 2px auto 10px;
+  background: linear-gradient(135deg, rgba(0,200,255,.55), rgba(140,70,255,.55));
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(255,255,255,.18);
+  box-shadow: 0 16px 45px rgba(0,0,0,.35);
+}
+.mplSplashTitle{ font-size: 18px; font-weight: 900; letter-spacing: .3px; }
+.mplSplashSub{ font-size: 12px; margin-top: 2px; opacity: .82; }
+.mplSplashDev{ margin-top: 12px; font-size: 12px; opacity: .9; }
+.mplSplashHint{ margin-top: 10px; font-size: 11px; opacity: .65; }
+
+/* light theme tweaks */
+body.theme-light .mplSplashCard{
+  background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.72));
+  border-color: rgba(0,0,0,.08);
+}
+body.theme-light .mplSplash{ background: rgba(0,0,0,.28); }

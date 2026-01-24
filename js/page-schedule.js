@@ -62,6 +62,13 @@ function render(t, docs, active){
           <div>
             <div class="h1" style="font-size:18px">Group ${esc(g)}</div>
             <div class="muted small">${byGroup[g].length} matches</div>
+            ${(()=>{
+              const first=(byGroup[g]||[])[0]||{};
+              const meta=(t.groupMeta && t.groupMeta[g])||{};
+              const d=esc(meta.dateLabel||first.dateLabel||"-");
+              const gr=esc(meta.ground||first.ground||first.venue||"-");
+              return `<div class="muted small" style="margin-top:4px">📅 ${d} &nbsp;•&nbsp; 🏟️ ${gr}</div>`;
+            })()}
           </div>
         </div>
         <div class="sep"></div>
