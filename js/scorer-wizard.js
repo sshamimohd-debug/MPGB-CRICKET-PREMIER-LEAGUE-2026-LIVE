@@ -102,6 +102,7 @@ export function initScorerWizard(opts){
   const btnNext = qs("#wizNext", root);
 
   let step = 1;
+  let userStep = null; // manual navigation inside wizard (prevents auto-forcing step)
   let activeTeam = "A";
   let selA = new Set();
   let selB = new Set();
@@ -119,6 +120,7 @@ export function initScorerWizard(opts){
   function close(){
     root.classList.add("hidden");
     host.innerHTML = "";
+    userStep = null;
   }
 
   function renderDots(){
@@ -522,6 +524,7 @@ function renderPlayingXI(doc){
   function onBack(){
     if(step<=1) return;
     step -= 1;
+    userStep = step;
     render();
   }
 
@@ -529,11 +532,18 @@ function renderPlayingXI(doc){
     const doc = opts.getDoc && opts.getDoc();
     if(!doc){ close(); return; }
 
-    // resumable step from doc
-    if(!isXIReady(doc)) step = 1;
-    else if(!isTossReady(doc)) step = 2;
-    else if(!isOpeningReady(doc)) step = 3;
-    else { close(); return; }
+    // resumable step from doc (docStep). 
+    // IMPORTANT: do not force step forward when user navigates Back to edit earlier steps.
+    const docStep = (!isXIReady(doc)) ? 1 : (!isTossReady(doc)) ? 2 : (!isOpeningReady(doc)) ? 3 : 0;
+    if(docStep===0){ close(); return; }
+    if(userStep==null){
+      step = docStep;
+    }else{
+      // Keep user's step (e.g., allow Back from Toss to XI), but never beyond docStep+1.
+      // This prevents jumping ahead without completing required data.
+      step = Math.min(Math.max(1, userStep), 3);
+      if(step > docStep+1) step = docStep;
+    }
 
     open();
     titleEl.textContent = (step===1) ? "Select Playing XI" : (step===2) ? "Toss" : "Opening Setup";
