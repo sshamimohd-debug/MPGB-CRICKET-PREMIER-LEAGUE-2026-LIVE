@@ -105,8 +105,6 @@ export function initScorerWizard(opts){
   let activeTeam = "A";
   let selA = new Set();
   let selB = new Set();
-  // Preserve XI list scroll per team to avoid jump-to-top on re-render
-  const xiScroll = { A: 0, B: 0 };
 
   let tossWinner = null;
   let tossDecision = "BAT";
@@ -114,6 +112,9 @@ export function initScorerWizard(opts){
   let opening = { striker:null, nonStriker:null, bowler:null };
 
   let _bound = false;
+  let _initialized = false;
+  let _addModalOpen = false;
+  let _lastDoc = null;
 
   function open(){
     root.classList.remove("hidden");
@@ -130,10 +131,19 @@ export function initScorerWizard(opts){
 
   function updateNextState(doc){
     btnNext.textContent = (step===3) ? "Start Match" : "Next";
+
+    // If Add Player modal is open, block navigation to avoid half-saved state.
+    if(_addModalOpen){
+      btnNext.disabled = true;
+      btnBack.disabled = true;
+      return;
+    }
+
     if(step===1) btnNext.disabled = !(selA.size===11 && selB.size===11);
     else if(step===2) btnNext.disabled = !(!!tossWinner && !!tossDecision);
     else if(step===3) btnNext.disabled = !(!!opening.striker && !!opening.nonStriker && !!opening.bowler);
     else btnNext.disabled = true;
+
     btnBack.disabled = (step===1);
   }
 
@@ -141,12 +151,6 @@ export function initScorerWizard(opts){
 function renderPlayingXI(doc){
   const a = doc?.a || "Team A";
   const b = doc?.b || "Team B";
-
-  // Preserve scroll position of the XI list for the currently active team
-  try{
-    const _prevList = qs("#xiList", host);
-    if(_prevList) xiScroll[activeTeam] = _prevList.scrollTop || 0;
-  }catch(e){}
 
   const squads = (opts.getSquads && opts.getSquads()) || {};
   const squadA_names = uniq(squads[a] || squads.A || []);
@@ -241,9 +245,17 @@ function renderPlayingXI(doc){
   `;
 
   const list = qs("#xiList", host);
-  // Restore scroll after re-render
-  try{ requestAnimationFrame(()=>{ if(list) list.scrollTop = xiScroll[activeTeam] || 0; }); }catch(e){}
   const strip = qs("#xiRoleStrip", host);
+  const tabAEl = qs("#xiTabA", host);
+  const tabBEl = qs("#xiTabB", host);
+
+  function updateTabs(){
+    if(tabAEl) tabAEl.classList.toggle('on', activeTeam==='A');
+    if(tabBEl) tabBEl.classList.toggle('on', activeTeam==='B');
+    if(tabAEl) tabAEl.innerHTML = `${esc(teamDisp(a))} <span class="muted">(${selA.size}/11)</span>`;
+    if(tabBEl) tabBEl.innerHTML = `${esc(teamDisp(b))} <span class="muted">(${selB.size}/11)</span>`;
+  }
+
 // Add Player modal wiring
   const teamNameEl = qs("#xiActiveTeamName", host);
   const btnAddPlayer = qs("#xiAddPlayerBtn", host);
@@ -260,31 +272,6 @@ function renderPlayingXI(doc){
   const apCancel = qs("#apCancel", host);
   const apAdd = qs("#apAdd", host);
 
-  // Ensure Add Player modal/backdrop do not take space inside the wizard layout
-  try{
-    if(apBackdrop){
-      apBackdrop.classList.add("hidden");
-      apBackdrop.style.display = "none";
-      apBackdrop.style.position = "fixed";
-      apBackdrop.style.inset = "0";
-      apBackdrop.style.zIndex = "9998";
-    }
-    if(apModal){
-      apModal.classList.add("hidden");
-      apModal.style.display = "none";
-      apModal.style.position = "fixed";
-      apModal.style.left = "50%";
-      apModal.style.top = "50%";
-      apModal.style.transform = "translate(-50%,-50%)";
-      apModal.style.zIndex = "9999";
-      apModal.style.maxHeight = "80vh";
-      apModal.style.overflow = "auto";
-      apModal.style.width = "min(720px, calc(100vw - 24px))";
-    }
-    if(apBackdrop && apBackdrop.parentElement !== document.body) document.body.appendChild(apBackdrop);
-    if(apModal && apModal.parentElement !== document.body) document.body.appendChild(apModal);
-  }catch(e){}
-
   function fillTeamSelect(){
     if(!apTeamSelect) return;
     apTeamSelect.innerHTML = `
@@ -295,6 +282,7 @@ function renderPlayingXI(doc){
   }
 
   function showAddModal(){
+    _addModalOpen = true;
     fillTeamSelect();
     if(apName) apName.value = "";
     if(apRole) apRole.value = "";
@@ -303,7 +291,7 @@ function renderPlayingXI(doc){
     if(apWK) apWK.checked = false;
     if(apAddSquad) apAddSquad.checked = true;
 
-    if(apBackdrop){ apBackdrop.classList.remove("hidden"); apBackdrop.style.display="block"; }
+    if(apBackdrop) apBackdrop.classList.remove("hidden");
     if(apModal){
       apModal.classList.remove("hidden");
       apModal.style.display = "block";
@@ -311,18 +299,21 @@ function renderPlayingXI(doc){
       apModal.style.opacity = "1";
       apModal.scrollTop = 0;
     }
+    updateNextState(_lastDoc);
     // focus name
     setTimeout(()=>{ try{ apName && apName.focus(); }catch(e){} }, 30);
   }
 
   function hideAddModal(){
-    if(apBackdrop){ apBackdrop.classList.add("hidden"); apBackdrop.style.display="none"; }
+    _addModalOpen = false;
+    if(apBackdrop) apBackdrop.classList.add("hidden");
     if(apModal){
       apModal.classList.add("hidden");
-      apModal.style.display = "none";
+      apModal.style.display = "";
       apModal.style.visibility = "";
       apModal.style.opacity = "";
     }
+    updateNextState(_lastDoc);
   }
 
   function getTeamLabel(teamKey){
@@ -383,6 +374,8 @@ function renderPlayingXI(doc){
     const players = mergeByName(basePlayers, TEMP_ADDED[activeTeam] || []);
     const set = activeTeam==='A' ? selA : selB;
 
+    updateTabs();
+
     if(teamNameEl){ teamNameEl.textContent = teamDisp(activeTeam==='A'?a:b); }
 
 
@@ -437,16 +430,18 @@ function renderPlayingXI(doc){
         const cur = activeTeam==='A' ? selA : selB;
         if(cur.has(name)) cur.delete(name);
         else { if(cur.size>=11) return; cur.add(name); }
-        xiScroll[activeTeam] = (list && list.scrollTop) ? list.scrollTop : 0;
-        render(); // re-render from current doc
+        const _st = list ? list.scrollTop : 0;
+        draw();
+        if(list) list.scrollTop = _st;
+        updateNextState(doc);
       };
       row.addEventListener("click", toggle);
       row.addEventListener("keydown", (e)=>{ if(e.key==="Enter" || e.key===" "){ e.preventDefault(); toggle(); } });
     });
   }
 
-  qs("#xiTabA", host).addEventListener("click", ()=>{ activeTeam='A'; render(); });
-  qs("#xiTabB", host).addEventListener("click", ()=>{ activeTeam='B'; render(); });
+  if(tabAEl) tabAEl.addEventListener("click", ()=>{ activeTeam='A'; render(); });
+  if(tabBEl) tabBEl.addEventListener("click", ()=>{ activeTeam='B'; render(); });
 
   draw();
 }
@@ -537,9 +532,13 @@ function renderPlayingXI(doc){
       if(step===1){
         if(selA.size!==11 || selB.size!==11) return;
         await opts.setPlayingXI(FB, matchId, Array.from(selA), Array.from(selB), null, null);
+        step = 2;
+        render();
       } else if(step===2){
         if(!tossWinner) return;
         await opts.setToss(FB, matchId, tossWinner, tossDecision);
+        step = 3;
+        render();
       } else if(step===3){
         if(!opening.striker || !opening.nonStriker || !opening.bowler) return;
         await opts.setOpeningSetup(FB, matchId, opening.striker, opening.nonStriker, opening.bowler);
@@ -549,7 +548,7 @@ function renderPlayingXI(doc){
         close();
         return;
       }
-      // step will be recomputed from updated doc via watchMatch -> sync
+      // UI step advanced locally; Firestore sync will reconcile state.
     }catch(e){
       alert(e?.message || String(e));
     }
@@ -561,22 +560,33 @@ function renderPlayingXI(doc){
     render();
   }
 
+  function stepFromDoc(doc){
+    if(!doc) return 0;
+    // If match already live/started, wizard should not block scoring.
+    if(isMatchLive(doc) || hasAnyBall(doc)) return 0;
+    if(!isXIReady(doc)) return 1;
+    if(!isTossReady(doc)) return 2;
+    if(!isOpeningReady(doc)) return 3;
+    return 0;
+  }
+
   function render(){
     const doc = opts.getDoc && opts.getDoc();
+    _lastDoc = doc || null;
     if(!doc){ close(); return; }
 
-    // Determine farthest allowed step from saved doc state.
-    // IMPORTANT: Allow user to go BACK to earlier steps even if later steps are already "ready".
-    let autoStep = 1;
-    if(isXIReady(doc)) autoStep = 2;
-    if(isXIReady(doc) && isTossReady(doc)) autoStep = 3;
-    // If everything is ready, wizard is not needed.
-    if(isXIReady(doc) && isTossReady(doc) && isOpeningReady(doc)){
-      close(); 
-      return;
+    const need = stepFromDoc(doc);
+    if(need===0){ close(); return; }
+
+    // On first open (or hard refresh), jump to the needed step.
+    if(!_initialized){
+      step = need;
+      _initialized = true;
     }
-    // Clamp step only forward (can't go beyond what doc allows), but do NOT force-forward.
-    if(step > autoStep) step = autoStep;
+
+    // Clamp just in case
+    if(step < 1) step = 1;
+    if(step > 3) step = 3;
 
     open();
     titleEl.textContent = (step===1) ? "Select Playing XI" : (step===2) ? "Toss" : "Opening Setup";
@@ -590,7 +600,7 @@ function renderPlayingXI(doc){
     updateNextState(doc);
   }
 
-  if(!_bound){
+  if(!_bound){  if(!_bound){
     btnBack.addEventListener("click", onBack);
     btnNext.addEventListener("click", onNext);
     _bound = true;
