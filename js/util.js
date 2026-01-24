@@ -174,3 +174,57 @@ export function roleLabel(role){
   if(r==="WK") return "Wicket Keeper";
   return r || "";
 }
+
+
+// -----------------------------
+// Live Feed Toasts (Phase-2)
+// -----------------------------
+import { watchLiveFeed } from './store-fb.js';
+
+export function mountLiveFeedToasts(FB, opts={}){
+  try{
+    if(!FB) return;
+    const limitN = Number(opts.limit || 10);
+    const rootId = opts.rootId || 'liveToasts';
+    let root = document.getElementById(rootId);
+    if(!root){
+      root = document.createElement('div');
+      root.id = rootId;
+      root.className = 'liveToasts';
+      document.body.appendChild(root);
+    }
+
+    const seenKey = opts.seenKey || 'liveFeed:lastSeen';
+    let lastSeenAt = Number(localStorage.getItem(seenKey) || 0);
+
+    const showToast = (it)=>{
+      const card = document.createElement('div');
+      card.className = 'toast';
+      card.innerHTML = `
+        <div class="tTitle">${esc(it.title||'Update')}</div>
+        <div class="tText">${esc(it.text||'')}</div>
+      `;
+      root.prepend(card);
+      // auto-remove
+      setTimeout(()=>{ try{ card.classList.add('out'); }catch(e){} }, 4200);
+      setTimeout(()=>{ try{ card.remove(); }catch(e){} }, 5200);
+      // cap
+      const kids = root.querySelectorAll('.toast');
+      if(kids.length>4){ for(let i=4;i<kids.length;i++) kids[i].remove(); }
+    };
+
+    const unsub = watchLiveFeed(FB, (items)=>{
+      // items sorted desc
+      const fresh = (items||[]).filter(it=> Number(it.at||0) > lastSeenAt).reverse();
+      fresh.forEach(it=>{
+        showToast(it);
+        lastSeenAt = Math.max(lastSeenAt, Number(it.at||0));
+      });
+      try{ localStorage.setItem(seenKey, String(lastSeenAt)); }catch(e){}
+    }, limitN);
+
+    return unsub;
+  }catch(e){
+    console.warn('mountLiveFeedToasts failed', e);
+  }
+}

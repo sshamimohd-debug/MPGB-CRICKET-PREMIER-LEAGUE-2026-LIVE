@@ -27,6 +27,7 @@ export async function ensureTournamentDocs(FB, tournament){
       teams: tournament.teams || [],
       venues: tournament.venues || [],
       squads: tournament.squads || {},
+      squadMeta: tournament.squadMeta || {},
       createdAt: _f.serverTimestamp(),
       updatedAt: _f.serverTimestamp()
     });
@@ -37,7 +38,8 @@ export async function ensureTournamentDocs(FB, tournament){
       groups: tournament.groups || [],
       teams: tournament.teams || [],
       venues: tournament.venues || [],
-      squads: tournament.squads || {}
+      squads: tournament.squads || {},
+      squadMeta: tournament.squadMeta || {}
     });
   }
 
@@ -724,77 +726,170 @@ export function watchAuth(FB, cb){
   return _f.onAuthStateChanged(auth, cb);
 }
 
-// ------------------------------------------------------------
-// Tournament meta helpers (used by scorer wizard / UI)
-// ------------------------------------------------------------
-
 /**
- * Returns the tournament document meta stored in Firestore.
- * Useful when squads / squadMeta are updated from Admin panel.
+ * Public helper: fetch tournament meta from Firestore (for squads updates without redeploy).
+ * Returns: { meta, squads, squadMeta }
  */
 export async function getTournamentMeta(FB){
   const { _f } = FB;
-  const tSnap = await _f.getDoc(tournamentRef(FB));
-  return tSnap.exists() ? (tSnap.data() || {}) : null;
+  const tRef = tournamentRef(FB);
+  const snap = await _f.getDoc(tRef);
+  if(!snap.exists()) return { meta:null, squads:{}, squadMeta:{} };
+  const data = snap.data() || {};
+  return {
+    meta: data,
+    squads: data.squads || {},
+    squadMeta: data.squadMeta || {}
+  };
 }
 
 /**
- * Upserts a player entry for a given team inside tournament.squadMeta (and keeps
- * tournament.squads (names) in-sync as best-effort).
- *
- * This is intentionally conservative: it does NOT change any match state keys.
+ * Upsert (add/update) a single squad player in tournament doc.
+ * - No deletes. Optional field "inactive" can be used by UI (local hide).
+ * Returns: { squads, squadMeta }
  */
 export async function upsertSquadPlayer(FB, teamKey, player){
   const { _f } = FB;
   const tRef = tournamentRef(FB);
-  const tSnap = await _f.getDoc(tRef);
-  if(!tSnap.exists()) throw new Error("Tournament doc not found");
+  const snap = await _f.getDoc(tRef);
+  const data = snap.exists() ? (snap.data()||{}) : {};
+  const squads = { ...(data.squads || {}) };
+  const squadMeta = { ...(data.squadMeta || {}) };
 
-  const meta = tSnap.data() || {};
-  const squads = (meta.squads && typeof meta.squads === 'object') ? JSON.parse(JSON.stringify(meta.squads)) : {};
-  const squadMeta = (meta.squadMeta && typeof meta.squadMeta === 'object') ? JSON.parse(JSON.stringify(meta.squadMeta)) : {};
+  const team = (teamKey||"").toString();
+  const pName = (player?.name||"").toString().trim();
+  if(!team || !pName) throw new Error("teamKey/name required");
 
-  const team = (teamKey || '').toString().trim();
-  if(!team) throw new Error('teamKey required');
-
-  // Normalize incoming payload
-  const pObj = (typeof player === 'string')
-    ? { name: player }
-    : (player && typeof player === 'object' ? {...player} : null);
-  if(!pObj) throw new Error('player required');
-
-  const pname = (pObj.name || pObj.playerName || '').toString().trim();
-  const pid = (pObj.playerId || pObj.empId || pObj.id || '').toString().trim();
-  if(!pname && !pid) throw new Error('player name/id required');
-
-  // 1) squads (names)
-  if(!Array.isArray(squads[team])) squads[team] = [];
-  if(pname){
-    const existsName = squads[team].some(x => (x || '').toString().trim().toLowerCase() === pname.toLowerCase());
-    if(!existsName) squads[team].push(pname);
+  // names list
+  const arr = Array.isArray(squads[team]) ? [...squads[team]] : [];
+  if(!arr.some(n=>(n||"").toString().toLowerCase()===pName.toLowerCase())){
+    arr.push(pName);
   }
+  squads[team] = arr;
 
-  // 2) squadMeta (objects)
-  if(!Array.isArray(squadMeta[team])) squadMeta[team] = [];
-  const idx = squadMeta[team].findIndex(x => {
-    if(!x) return false;
-    const xid = (x.playerId || x.empId || x.id || '').toString().trim();
-    const xname = (x.name || x.playerName || '').toString().trim();
-    if(pid && xid && pid === xid) return true;
-    if(pname && xname && pname.toLowerCase() === xname.toLowerCase()) return true;
-    return false;
-  });
-  if(idx >= 0){
-    squadMeta[team][idx] = { ...squadMeta[team][idx], ...pObj };
-  }else{
-    squadMeta[team].push(pObj);
-  }
+  // rich meta list
+  const metaArr = Array.isArray(squadMeta[team]) ? [...squadMeta[team]] : [];
+  const idx = metaArr.findIndex(x=> (x?.name||"").toString().toLowerCase()===pName.toLowerCase());
+  const nextObj = {
+    name: pName,
+    role: (player?.role||"").toString().toUpperCase(),
+    isCaptain: !!player?.isCaptain,
+    isViceCaptain: !!player?.isViceCaptain,
+    isWicketKeeper: !!player?.isWicketKeeper,
+    inactive: !!player?.inactive
+  };
+  if(idx>=0) metaArr[idx] = { ...metaArr[idx], ...nextObj };
+  else metaArr.push(nextObj);
+  squadMeta[team] = metaArr;
 
-  await _f.updateDoc(tRef, {
-    squads,
-    squadMeta,
-    updatedAt: _f.serverTimestamp()
-  });
-
+  await _f.setDoc(tRef, { squads, squadMeta, updatedAt: _f.serverTimestamp() }, { merge:true });
   return { squads, squadMeta };
+}
+
+
+// -----------------------------
+// Live Tournament Aggregates (Phase-1 + Phase-2)
+// -----------------------------
+
+export function playerAggRef(FB, pid){
+  const {db,_f}=FB;
+  return _f.doc(db, "tournaments", FB.TOURNAMENT_ID, "playerAgg", pid);
+}
+export function leaderboardRef(FB){
+  const {db,_f}=FB;
+  return _f.doc(db, "tournaments", FB.TOURNAMENT_ID, "leaderboard", "current");
+}
+export function liveFeedCol(FB){
+  const {db,_f}=FB;
+  return _f.collection(db, "tournaments", FB.TOURNAMENT_ID, "liveFeed");
+}
+
+function _safeId(s){
+  return (s||"").toString().trim().replace(/\s+/g,' ').replace(/[^a-zA-Z0-9 _:\-\.]/g,'').slice(0,80);
+}
+
+export async function upsertPlayerAgg(FB, pid, patchDelta){
+  const { _f } = FB;
+  const ref = playerAggRef(FB, pid);
+  const snap = await _f.getDoc(ref);
+  const cur = snap.exists() ? (snap.data()||{}) : {};
+
+  // merge numeric increments (single scorer, so read-modify-write is OK)
+  const next = { ...cur };
+  for(const k of Object.keys(patchDelta||{})){
+    const v = patchDelta[k];
+    if(typeof v === 'number') next[k] = Number(cur[k]||0) + v;
+    else if(v !== undefined) next[k] = v;
+  }
+  next.updatedAt = _f.serverTimestamp();
+
+  if(!snap.exists()){
+    next.createdAt = _f.serverTimestamp();
+    await _f.setDoc(ref, next);
+  }else{
+    await _f.setDoc(ref, next, { merge:true });
+  }
+  return next;
+}
+
+export async function getLeaderboard(FB){
+  const { _f } = FB;
+  const ref = leaderboardRef(FB);
+  const snap = await _f.getDoc(ref);
+  return snap.exists() ? (snap.data()||{}) : null;
+}
+
+export async function upsertLeaderboardIfNeeded(FB, field, candidate){
+  const { _f } = FB;
+  const ref = leaderboardRef(FB);
+  const snap = await _f.getDoc(ref);
+  const cur = snap.exists() ? (snap.data()||{}) : {};
+
+  const existing = cur?.[field];
+  const exVal = Number(existing?.value || 0);
+  const candVal = Number(candidate?.value || 0);
+
+  if(!existing || candVal > exVal){
+    const patch = { [field]: { ...candidate, value: candVal }, updatedAt: _f.serverTimestamp() };
+    if(!snap.exists()) patch.createdAt = _f.serverTimestamp();
+    await _f.setDoc(ref, patch, { merge:true });
+    return { changed:true, prev: existing||null, next: patch[field] };
+  }
+  return { changed:false, prev: existing||null, next: existing||null };
+}
+
+export function watchLeaderboard(FB, cb){
+  const { _f } = FB;
+  return _f.onSnapshot(leaderboardRef(FB), (snap)=>{
+    cb(snap.exists() ? (snap.data()||{}) : null);
+  });
+}
+
+export async function pushLiveFeed(FB, event){
+  const { _f } = FB;
+  const col = liveFeedCol(FB);
+  const payload = {
+    type: _safeId(event?.type || 'INFO'),
+    title: (event?.title||'').toString().slice(0,80),
+    text: (event?.text||'').toString().slice(0,180),
+    matchId: _safeId(event?.matchId || ''),
+    at: Date.now(),
+    ts: _f.serverTimestamp()
+  };
+  try{
+    await _f.addDoc(col, payload);
+  }catch(e){
+    // non-fatal (rules may block)
+    console.warn('pushLiveFeed failed', e);
+  }
+}
+
+export function watchLiveFeed(FB, cb, limitN=20){
+  const { _f } = FB;
+  const q = _f.query(liveFeedCol(FB), _f.orderBy('at','desc'), _f.limit(limitN));
+  return _f.onSnapshot(q, (snap)=>{
+    const out=[];
+    snap.forEach(d=> out.push({ id:d.id, ...(d.data()||{}) }));
+    cb(out);
+  });
 }

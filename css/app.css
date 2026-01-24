@@ -1012,3 +1012,35 @@ body.theme-light .mplSplashCard{
   border-color: rgba(0,0,0,.08);
 }
 body.theme-light .mplSplash{ background: rgba(0,0,0,.28); }
+
+
+/* Small buttons */
+.btn.sm{ height:36px; padding:8px 10px; border-radius:12px; font-size:12px; }
+
+
+/* ===== Add Player Modal FIX (visibility + sunlight readability) ===== */
+#addPlayerModal.modal{ display:none; }
+#addPlayerModal.modal.open{ display:block; }
+#addPlayerModal .modalCard{ color: var(--text); }
+#addPlayerModal .muted{ color: var(--muted); }
+#addPlayerModal input, 
+#addPlayerModal select{
+  background: rgba(255,255,255,.08) !important;
+  color: var(--text) !important;
+  border: 1px solid rgba(255,255,255,.22) !important;
+}
+#addPlayerModal input::placeholder{ color: rgba(255,255,255,.55); }
+#addPlayerModal .chip{ color: var(--text); }
+
+
+/* =============================
+   Live Feed Toasts (Phase-2)
+   ============================= */
+.liveToasts{position:fixed;left:12px;right:12px;bottom:72px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+@media(min-width:720px){.liveToasts{left:auto;right:16px;bottom:20px;max-width:380px}}
+.toast{pointer-events:none;background:rgba(20,20,24,.92);border:1px solid rgba(255,255,255,.12);backdrop-filter: blur(10px);border-radius:14px;padding:10px 12px;box-shadow:0 10px 30px rgba(0,0,0,.35);animation:toastIn .25s ease-out;}
+.toast.out{animation:toastOut .25s ease-in forwards}
+.toast .tTitle{font-weight:800;font-size:13px;letter-spacing:.2px}
+.toast .tText{margin-top:2px;font-size:12px;opacity:.9;line-height:1.3}
+@keyframes toastIn{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes toastOut{from{transform:translateY(0);opacity:1}to{transform:translateY(12px);opacity:0}}

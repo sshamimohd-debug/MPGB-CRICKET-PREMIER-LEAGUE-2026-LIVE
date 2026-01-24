@@ -1,9 +1,33 @@
-import { setActiveNav, loadTournament, esc, qs, teamDisp, getSquadMeta, roleLabel } from "./util.js";
-import { getFB, watchAllMatches } from "./store-fb.js";
+import { setActiveNav, loadTournament, esc, qs, teamDisp, getSquadMeta, roleLabel, mountLiveFeedToasts } from "./util.js";
+import { getFB, watchAllMatches, getTournamentMeta, watchLeaderboard } from "./store-fb.js";
 
 setActiveNav("stats");
+
+// Squad UI state (local-only)
+let SQUAD_ROLE = "";
+let SQUAD_Q = "";
+let SQUAD_SHOW_INACTIVE = false;
+
+const INACTIVE_KEY = (team)=>`mpgb_inactive_${(team||"").toString()}`;
+function getInactive(team){
+  try{
+    const raw = localStorage.getItem(INACTIVE_KEY(team));
+    const arr = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(arr) ? arr : []);
+  }catch(e){ return new Set(); }
+}
+function setInactive(team, set){
+  try{
+    localStorage.setItem(INACTIVE_KEY(team), JSON.stringify(Array.from(set)));
+  }catch(e){}
+}
+
 const FB = getFB();
 const $ = (id)=>document.getElementById(id);
+
+let LIVE_LEADERS = null;
+watchLeaderboard(FB, (lb)=>{ LIVE_LEADERS = lb; render(); });
+mountLiveFeedToasts(FB, { seenKey:'liveFeed:lastSeen:stats' });
 
 let TOURNAMENT = null;
 let ALL_MATCHES = [];
@@ -185,6 +209,8 @@ function renderSquad(team){
   const squad = hasMeta ? meta : (TOURNAMENT?.squads?.[team] || []).map(n=>({name:n}));
   const list = squad.length ? squad : Array.from({length:15}, (_,i)=>({name:`${team} Player ${i+1}`}));
 
+  const inactive = getInactive(team);
+
   const cnt = {BAT:0,BOWL:0,AR:0,WK:0};
   if(hasMeta){
     for(const p of list){
@@ -198,6 +224,26 @@ function renderSquad(team){
       <div class="h1" style="font-size:18px">${esc(teamDisp(team))} Squad</div>
       <div class="sep"></div>
 
+      <div class="row wrap" style="gap:10px; margin:10px 0 8px; align-items:flex-end">
+        <div style="flex:1; min-width:220px">
+          <div class="muted small">Search player</div>
+          <input class="input" id="squadSearch" placeholder="Type name…" value="${esc(SQUAD_Q)}"/>
+        </div>
+        <div style="width:160px">
+          <div class="muted small">Role</div>
+          <select class="input" id="squadRole">
+            <option value="" ${SQUAD_ROLE===""?"selected":""}>All</option>
+            <option value="BAT" ${SQUAD_ROLE==="BAT"?"selected":""}>BAT</option>
+            <option value="BOWL" ${SQUAD_ROLE==="BOWL"?"selected":""}>BOWL</option>
+            <option value="AR" ${SQUAD_ROLE==="AR"?"selected":""}>AR</option>
+            <option value="WK" ${SQUAD_ROLE==="WK"?"selected":""}>WK</option>
+          </select>
+        </div>
+        <label class="chip" style="cursor:pointer; align-self:center">
+          <input type="checkbox" id="squadShowInactive" ${SQUAD_SHOW_INACTIVE?"checked":""} style="margin-right:6px"> Show inactive
+        </label>
+      </div>
+
       ${hasMeta ? `
         <div class="rolePills" style="margin:8px 0 10px;">
           <span class="rolePill bat">BAT: ${cnt.BAT}</span>
@@ -208,7 +254,17 @@ function renderSquad(team){
       ` : ``}
 
       <div class="list">
-        ${list.map(p=>{
+        ${list.filter(p=>{
+          const name = (p.name || p || "").toString();
+          const q = (SQUAD_Q||"").toLowerCase().trim();
+          const role = (SQUAD_ROLE||"").toUpperCase();
+          const r = (p.role||"").toString().toUpperCase();
+          const isIn = inactive.has(name);
+          if(!SQUAD_SHOW_INACTIVE && isIn) return false;
+          if(role && r !== role) return false;
+          if(q && !name.toLowerCase().includes(q)) return false;
+          return true;
+        }).map(p=>{
           const name = p.name || p;
           const r = (p.role||"").toString().toUpperCase();
           const chips = [];
@@ -222,10 +278,13 @@ function renderSquad(team){
               <div class="left">
                 <span class="tag">P</span>
                 <div>
-                  <b>${esc(name)}</b>
+                  <b>${esc(name)}</b> ${inactive.has(name)?`<span class="chip" style="opacity:.7">INACTIVE</span>`:""}
                   ${chips.length || sub ? `<div class="small" style="margin-top:4px; display:flex; gap:6px; align-items:center; flex-wrap:wrap;">${chips.join("")} ${sub}</div>` : ``}
                 </div>
               </div>
+              ${hasMeta ? `<div class="row" style="gap:8px">
+                <button class="btn ghost sm squadInactiveBtn" data-player="${esc(name)}">${inactive.has(name)?"Unhide":"Hide"}</button>
+              </div>`:""}
             </div>
           `;
         }).join("")}
@@ -236,6 +295,31 @@ function renderSquad(team){
   `;
 }
 
+
+function renderLiveLeaders(){
+  const lb = LIVE_LEADERS;
+  if(!lb) return '';
+  const card = (key, label, icon)=>{
+    const it = lb[key] || null;
+    if(!it) return `<div class="card" style="padding:10px"><div class="muted small">${icon} ${esc(label)}</div><div class="h1" style="font-size:16px;margin-top:4px">-</div></div>`;
+    return `<div class="card" style="padding:10px">
+      <div class="muted small">${icon} ${esc(label)}</div>
+      <div class="h1" style="font-size:16px;margin-top:4px">${esc(it.player||'-')} <span class="muted">(${esc(teamDisp(it.team||''))})</span></div>
+      <div class="muted small" style="margin-top:2px"><b>${esc(it.value||0)}</b></div>
+    </div>`;
+  };
+  return `
+    <div class="h1" style="font-size:16px;margin:6px 0 8px">Live Leaders</div>
+    <div class="grid cols2" style="gap:8px">
+      ${card('mostRuns','Most Runs','🏏')}
+      ${card('mostWickets','Most Wickets','🎯')}
+      ${card('mostSixes','Most Sixes','💣')}
+      ${card('mostFours','Most Fours','✨')}
+    </div>
+    <div class="sep" style="margin:10px 0"></div>
+  `;
+}
+
 function render(){
   const team = $("teamPick")?.value || "";
   const byTeam = aggregate(ALL_MATCHES);
@@ -243,11 +327,50 @@ function render(){
 
   $("viewStats").innerHTML = renderTables(players);
   $("viewSquad").innerHTML = renderSquad(team);
+
+  // bind squad controls (after HTML injected)
+  try{
+    const q = document.getElementById("squadSearch");
+    const r = document.getElementById("squadRole");
+    const s = document.getElementById("squadShowInactive");
+    if(q){
+      q.oninput = (e)=>{ SQUAD_Q = e.target.value || ""; render(); };
+    }
+    if(r){
+      r.onchange = (e)=>{ SQUAD_ROLE = e.target.value || ""; render(); };
+      r.value = SQUAD_ROLE || "";
+    }
+    if(s){
+      s.onchange = (e)=>{ SQUAD_SHOW_INACTIVE = !!e.target.checked; render(); };
+      s.checked = !!SQUAD_SHOW_INACTIVE;
+    }
+    // inactive buttons
+    document.querySelectorAll(".squadInactiveBtn").forEach(btn=>{
+      btn.onclick = ()=>{
+        const nm = btn.getAttribute("data-player") || "";
+        const set = getInactive(team);
+        if(set.has(nm)) set.delete(nm); else set.add(nm);
+        setInactive(team, set);
+        render();
+      };
+    });
+  }catch(e){}
+
 }
 
 (async function main(){
   TOURNAMENT = await loadTournament();
   initTeamPick();
+
+  // Optional: pull latest squads/squadMeta from Firestore tournament doc (if public read allowed)
+  try{
+    const tm = await getTournamentMeta(FB);
+    if(tm?.squads) TOURNAMENT.squads = tm.squads;
+    if(tm?.squadMeta){
+      globalThis.__SQUAD_META = tm.squadMeta;
+      TOURNAMENT.squadMeta = tm.squadMeta;
+    }
+  }catch(e){}
 
   // Live updates from Firestore
   watchAllMatches(FB, (list)=>{

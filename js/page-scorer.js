@@ -1,6 +1,6 @@
 import { initScorerWizard } from "./scorer-wizard.js";
 import {setActiveNav, qs, loadTournament, teamDisp} from "./util.js";
-import { getFB, watchMatch, watchAuth, addBall, undoBall, setMatchStatus, resetMatch, setToss, setPlayingXI, setOpeningSetup, finalizeMatchAndComputeAwards, startSecondInnings, getTournamentMeta, upsertSquadPlayer } from "./store-fb.js";
+import { getFB, watchMatch, watchAuth, addBall, undoBall, setMatchStatus, resetMatch, setToss, setPlayingXI, setOpeningSetup, finalizeMatchAndComputeAwards, startSecondInnings, getTournamentMeta, upsertSquadPlayer, upsertPlayerAgg, upsertLeaderboardIfNeeded, pushLiveFeed } from "./store-fb.js";
 import { renderScoreLine, renderCommentary, deriveAwardsForUI, formatMomDetailLine, deriveResultText } from "./renderers.js";
 
 setActiveNav("scorer");
@@ -18,6 +18,9 @@ let TOURNAMENT = null;
 let SQUADS = {}; // team -> [15]
 let CURRENT_DOC = null;
 let LAST_STATUS = null;
+let _processedBalls = 0;
+let _liveStatsBusy = false;
+
 let _tossMounted = false;
 let _xiMounted = false;
 let _openingMounted = false;
@@ -1759,12 +1762,163 @@ watchAuth(FB, (user)=>{
   }
 });
 
+
+
+// -----------------------------
+// Phase-1 + Phase-2: Live leaders + flash feed (scorer writes, viewers read)
+// -----------------------------
+function _pid(team, player){
+  const t = (team||'').toString().trim();
+  const p = (player||'').toString().trim();
+  return (t + '::' + p).replace(/\s+/g,' ').slice(0,120);
+}
+
+function _normWicketKind(kind){
+  return (kind||"").toString().trim().toLowerCase();
+}
+
+function _findEvByAt(state, at){
+  const innings = Array.isArray(state?.innings) ? state.innings : [];
+  for(const inn of innings){
+    const bbb = Array.isArray(inn?.ballByBall) ? inn.ballByBall : [];
+    // check last few first
+    for(let i=bbb.length-1; i>=0 && i>=bbb.length-8; i--){
+      const ev = bbb[i];
+      if(Number(ev?.at||0) === Number(at||0)) return { ev, inn };
+    }
+  }
+  // fallback: just return last event of current innings
+  const idx = Number(state?.inningsIndex||0);
+  const inn = innings[idx];
+  const bbb = Array.isArray(inn?.ballByBall) ? inn.ballByBall : [];
+  if(bbb.length) return { ev: bbb[bbb.length-1], inn };
+  return { ev:null, inn:null };
+}
+
+function _runsThisOver(inn){
+  const bbb = Array.isArray(inn?.ballByBall) ? inn.ballByBall : [];
+  let legalCount = 0;
+  let runs = 0;
+  for(let i=bbb.length-1;i>=0;i--){
+    const ev = bbb[i];
+    if(ev?.legal) legalCount += 1;
+    runs += Number(ev?.runsTotal||0);
+    if(legalCount>=6) break;
+  }
+  return runs;
+}
+
+async function processNewBallsForLiveStats(doc){
+  try{
+    if(_liveStatsBusy) return;
+    if(!FB?.auth?.currentUser) return; // only logged-in scorer writes
+    const st = doc?.state || {};
+    const balls = Array.isArray(st.balls) ? st.balls : [];
+    if(balls.length < _processedBalls){
+      _processedBalls = balls.length;
+      return;
+    }
+    if(balls.length === _processedBalls) return;
+
+    _liveStatsBusy = true;
+    // process sequentially
+    for(let i=_processedBalls;i<balls.length;i++){
+      const b = balls[i];
+      const at = Number(b?.at||0);
+      const found = _findEvByAt(st, at);
+      const ev = found.ev;
+      const inn = found.inn || (st.innings||[])[Number(st.inningsIndex||0)];
+      if(!ev || !inn) continue;
+
+      const batTeam = (inn.batting||"");
+      const bowlTeam = (inn.bowling||"");
+
+      // Runs + sixes/fours (bat only)
+      let batRuns = 0;
+      if(String(b?.type||'').toUpperCase()==='RUN') batRuns = Number(b?.runs||0);
+      if(String(b?.type||'').toUpperCase()==='NB') batRuns = Number(b?.batRuns||0);
+
+      const batter = (b?.batter || ev?.strikerId || '').toString();
+      if(batter && batTeam){
+        // update agg
+        const pid = _pid(batTeam, batter);
+        const patch = { team: batTeam, player: batter, runs: batRuns };
+        if(batRuns===6) patch.sixes = 1;
+        if(batRuns===4) patch.fours = 1;
+        const nextAgg = await upsertPlayerAgg(FB, pid, patch);
+
+        // leader checks
+        if(nextAgg?.runs != null){
+          const r = await upsertLeaderboardIfNeeded(FB, 'mostRuns', { team: batTeam, player: batter, value: Number(nextAgg.runs||0) });
+          if(r?.changed){
+            await pushLiveFeed(FB, { type:'LEADER', title:'Most Runs update', text:`${batter} (${batTeam}) now leads with ${Number(nextAgg.runs||0)} runs`, matchId: doc.matchId||matchId });
+          }
+        }
+        if(nextAgg?.sixes != null){
+          const r = await upsertLeaderboardIfNeeded(FB, 'mostSixes', { team: batTeam, player: batter, value: Number(nextAgg.sixes||0) });
+          if(r?.changed){
+            await pushLiveFeed(FB, { type:'LEADER', title:'Most Sixes update', text:`${batter} (${batTeam}) now leads with ${Number(nextAgg.sixes||0)} sixes`, matchId: doc.matchId||matchId });
+          }
+        }
+        if(nextAgg?.fours != null){
+          const r = await upsertLeaderboardIfNeeded(FB, 'mostFours', { team: batTeam, player: batter, value: Number(nextAgg.fours||0) });
+          if(r?.changed){
+            await pushLiveFeed(FB, { type:'LEADER', title:'Most Fours update', text:`${batter} (${batTeam}) now leads with ${Number(nextAgg.fours||0)} fours`, matchId: doc.matchId||matchId });
+          }
+        }
+
+        // milestones (simple)
+        const rr = Number(nextAgg.runs||0);
+        if([25,50,75,100].includes(rr)){
+          await pushLiveFeed(FB, { type:'MILESTONE', title:'Batting milestone', text:`${batter} reached ${rr} runs`, matchId: doc.matchId||matchId });
+        }
+      }
+
+      // Wickets (bowler credit only if wicketApplied and kind != run out)
+      if(String(ev?.type||'').toUpperCase()==='WICKET' && ev?.wicketApplied){
+        const kind = _normWicketKind(ev?.wicket?.kind || b?.wicketKind);
+        if(kind !== 'run out'){
+          const bowler = (b?.bowler || ev?.bowlerId || '').toString();
+          if(bowler && bowlTeam){
+            const pidB = _pid(bowlTeam, bowler);
+            const nextAggB = await upsertPlayerAgg(FB, pidB, { team: bowlTeam, player: bowler, wickets: 1 });
+            const r = await upsertLeaderboardIfNeeded(FB, 'mostWickets', { team: bowlTeam, player: bowler, value: Number(nextAggB.wickets||0) });
+            if(r?.changed){
+              await pushLiveFeed(FB, { type:'LEADER', title:'Most Wickets update', text:`${bowler} (${bowlTeam}) now leads with ${Number(nextAggB.wickets||0)} wickets`, matchId: doc.matchId||matchId });
+            }
+            const ww = Number(nextAggB.wickets||0);
+            if([2,3,4,5].includes(ww)){
+              await pushLiveFeed(FB, { type:'MILESTONE', title:'Bowling milestone', text:`${bowler} took ${ww} wickets`, matchId: doc.matchId||matchId });
+            }
+          }
+        }
+      }
+
+      // Over-end flash
+      if(ev?.legal && Number(ev?.ballsLegal||0) % 6 === 0){
+        const overNo = ev?.over;
+        const ovRuns = _runsThisOver(inn);
+        const score = `${Number(inn?.runs||0)}/${Number(inn?.wkts||0)}`;
+        await pushLiveFeed(FB, { type:'OVER', title:`Over ${overNo} done`, text:`${ovRuns} runs • Score ${score} (${inn?.batting||''})`, matchId: doc.matchId||matchId });
+      }
+    }
+
+    _processedBalls = balls.length;
+  }catch(e){
+    console.warn('live stats update failed', e);
+  }finally{
+    _liveStatsBusy = false;
+  }
+}
+
 // -----------------------------
 // Render
 // -----------------------------
 function render(doc){
   CURRENT_DOC = doc;
   ensureWizard();
+  processNewBallsForLiveStats(doc);
+
   window.__MATCH__ = doc;// exposed for UI debug
 
   if(!doc){

@@ -1,4 +1,4 @@
-import {setActiveNav, preferredMatchId, persistLastMatchId, wireBottomNav, esc, teamDisp} from "./util.js";
+import {setActiveNav, preferredMatchId, persistLastMatchId, wireBottomNav, esc, teamDisp, mountLiveFeedToasts} from "./util.js";
 import { getFB, watchMatch } from "./store-fb.js";
 import { renderScoreLine, renderCommentary, deriveResultText } from "./renderers.js";
 
@@ -7,6 +7,9 @@ const FB = getFB();
 const matchId = preferredMatchId("A1");
 persistLastMatchId(matchId);
 wireBottomNav(matchId);
+
+// Phase-2: real-time toast feed (leader changes, milestones, over-end)
+mountLiveFeedToasts(FB, { seenKey:`liveFeed:lastSeen:${matchId}` });
 
 
 function ensureResultBanner(){

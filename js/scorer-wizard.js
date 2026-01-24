@@ -22,6 +22,26 @@ const uniq = (arr)=> {
   return out;
 };
 
+// Local-only additions (do not touch scoring schema)
+const TEMP_ADDED = { A: [], B: [] }; // players added from Playing XI screen (for current session)
+function mergeByName(baseList, extraList){
+  const out = [];
+  const seen = new Set();
+  for(const p of (baseList||[])){
+    const name = (p?.name ?? p).toString().trim();
+    if(!name || seen.has(name)) continue;
+    seen.add(name);
+    out.push(typeof p === "string" ? {name, role:"", isCaptain:false, isViceCaptain:false, isWicketKeeper:false} : p);
+  }
+  for(const p of (extraList||[])){
+    const name = (p?.name ?? p).toString().trim();
+    if(!name || seen.has(name)) continue;
+    seen.add(name);
+    out.push(p);
+  }
+  return out;
+}
+
 function isXIReady(doc){
   const st = doc?.state || {};
   const a = doc?.a, b = doc?.b;
@@ -153,12 +173,166 @@ function renderPlayingXI(doc){
 
       <div class="roleStrip" id="xiRoleStrip"></div>
 
+      <div class="xiTools">
+        <div class="xiToolsLeft">
+          <div class="xiActiveTeam">Add Player to: <span id="xiActiveTeamName"></span></div>
+        </div>
+        <div class="xiToolsRight">
+          <button class="btn sm xiAddBtn" id="xiAddPlayerBtn">+ Add Player</button>
+        </div>
+      </div>
+
       <div class="wizList" id="xiList"></div>
     </div>
+
+      <div class="apBackdrop hidden" id="apBackdrop"></div>
+      <div class="apModal hidden" id="apModal" role="dialog" aria-modal="true">
+        <div class="apHeader">
+          <div>
+            <div class="apTitle">Add Player</div>
+            <div class="apSub">Player add होगा. “Add to squad” tick करने पर future matches के लिए squad में भी add होगा.</div>
+          </div>
+          <button class="apClose" id="apCloseBtn" aria-label="Close">✕</button>
+        </div>
+
+        <div class="apBody">
+          <div class="apRow">
+            <div class="apCol">
+              <label class="apLabel">Team</label>
+              <select class="apInput" id="apTeamSelect"></select>
+            </div>
+            <div class="apCol">
+              <label class="apLabel">Role</label>
+              <select class="apInput" id="apRole">
+                <option value="">—</option>
+                <option value="BAT">BAT</option>
+                <option value="BOWL">BOWL</option>
+                <option value="AR">AR</option>
+                <option value="WK">WK</option>
+              </select>
+            </div>
+          </div>
+
+          <label class="apLabel">Player Name</label>
+          <input class="apInput" id="apName" placeholder="Full name" autocomplete="off" />
+
+          <div class="apChips">
+            <label class="apChip"><input type="checkbox" id="apC" /> <span>C</span></label>
+            <label class="apChip"><input type="checkbox" id="apVC" /> <span>VC</span></label>
+            <label class="apChip"><input type="checkbox" id="apWK" /> <span>WK</span></label>
+            <label class="apChip apSquad"><input type="checkbox" id="apAddSquad" checked /> <span>Add to squad for future matches</span></label>
+          </div>
+        </div>
+
+        <div class="apFooter">
+          <button class="btn sm ghost" id="apCancel">Cancel</button>
+          <button class="btn sm" id="apAdd">Add Player</button>
+        </div>
+      </div>
+
   `;
 
   const list = qs("#xiList", host);
   const strip = qs("#xiRoleStrip", host);
+// Add Player modal wiring
+  const teamNameEl = qs("#xiActiveTeamName", host);
+  const btnAddPlayer = qs("#xiAddPlayerBtn", host);
+  const apBackdrop = qs("#apBackdrop", host);
+  const apModal = qs("#apModal", host);
+  const apCloseBtn = qs("#apCloseBtn", host);
+  const apTeamSelect = qs("#apTeamSelect", host);
+  const apName = qs("#apName", host);
+  const apRole = qs("#apRole", host);
+  const apC = qs("#apC", host);
+  const apVC = qs("#apVC", host);
+  const apWK = qs("#apWK", host);
+  const apAddSquad = qs("#apAddSquad", host);
+  const apCancel = qs("#apCancel", host);
+  const apAdd = qs("#apAdd", host);
+
+  function fillTeamSelect(){
+    if(!apTeamSelect) return;
+    apTeamSelect.innerHTML = `
+      <option value="A">${esc(teamDisp(a))}</option>
+      <option value="B">${esc(teamDisp(b))}</option>
+    `;
+    apTeamSelect.value = activeTeam;
+  }
+
+  function showAddModal(){
+    fillTeamSelect();
+    if(apName) apName.value = "";
+    if(apRole) apRole.value = "";
+    if(apC) apC.checked = false;
+    if(apVC) apVC.checked = false;
+    if(apWK) apWK.checked = false;
+    if(apAddSquad) apAddSquad.checked = true;
+
+    if(apBackdrop) apBackdrop.classList.remove("hidden");
+    if(apModal){
+      apModal.classList.remove("hidden");
+      apModal.style.display = "block";
+      apModal.style.visibility = "visible";
+      apModal.style.opacity = "1";
+      apModal.scrollTop = 0;
+    }
+    // focus name
+    setTimeout(()=>{ try{ apName && apName.focus(); }catch(e){} }, 30);
+  }
+
+  function hideAddModal(){
+    if(apBackdrop) apBackdrop.classList.add("hidden");
+    if(apModal){
+      apModal.classList.add("hidden");
+      apModal.style.display = "";
+      apModal.style.visibility = "";
+      apModal.style.opacity = "";
+    }
+  }
+
+  function getTeamLabel(teamKey){
+    return teamKey==="B" ? b : a;
+  }
+
+  function addPlayerNow(){
+    const name = (apName?.value || "").trim();
+    if(!name) return;
+    const teamKey = (apTeamSelect?.value || activeTeam);
+    const role = (apRole?.value || "").toUpperCase();
+    const p = {
+      name,
+      role,
+      isCaptain: !!apC?.checked,
+      isViceCaptain: !!apVC?.checked,
+      isWicketKeeper: !!apWK?.checked,
+      _tempAdded: true
+    };
+    TEMP_ADDED[teamKey] = mergeByName(TEMP_ADDED[teamKey]||[], [p]);
+
+    // Optional: persist in squadMeta for future matches (if logged in / rules allow)
+    if(!!apAddSquad?.checked){
+      try{
+        const teamName = getTeamLabel(teamKey);
+        if(opts.upsertSquadPlayer){
+          opts.upsertSquadPlayer(teamName, p);
+        }else if(window?.storeFb?.upsertSquadPlayer){
+          window.storeFb.upsertSquadPlayer(teamName, p);
+        }
+      }catch(e){}
+    }
+
+    hideAddModal();
+    draw();
+  }
+
+  if(btnAddPlayer) btnAddPlayer.addEventListener("click", (e)=>{ e.preventDefault(); showAddModal(); });
+  if(apBackdrop) apBackdrop.addEventListener("click", hideAddModal);
+  if(apCloseBtn) apCloseBtn.addEventListener("click", hideAddModal);
+  if(apCancel) apCancel.addEventListener("click", (e)=>{ e.preventDefault(); hideAddModal(); });
+
+  if(apAdd) apAdd.addEventListener("click", (e)=>{ e.preventDefault(); addPlayerNow(); });
+  if(apName) apName.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); addPlayerNow(); } });
+
 
   function countRoles(players){
     const c = {BAT:0,BOWL:0,AR:0,WK:0};
@@ -170,8 +344,12 @@ function renderPlayingXI(doc){
   }
 
   function draw(){
-    const players = activeTeam==='A' ? squadA : squadB;
+    const basePlayers = activeTeam==='A' ? squadA : squadB;
+    const players = mergeByName(basePlayers, TEMP_ADDED[activeTeam] || []);
     const set = activeTeam==='A' ? selA : selB;
+
+    if(teamNameEl){ teamNameEl.textContent = teamDisp(activeTeam==='A'?a:b); }
+
 
     if(!players || !players.length){
       list.innerHTML = `<div class="wizEmpty">Players list load नहीं हुई। (data/tournament.json) check करें।</div>`;
