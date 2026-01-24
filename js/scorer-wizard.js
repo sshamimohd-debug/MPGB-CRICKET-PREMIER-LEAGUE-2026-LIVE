@@ -380,8 +380,7 @@ function renderPlayingXI(doc){
       </div>
     ` : `<div class="muted small">Role data available नहीं है (squadMeta missing)</div>`;
 
-    const prevScroll = preserveScroll ? (list?.scrollTop || 0) : 0;
-
+    
     list.innerHTML = players.map(p=>{
       const on = set.has(p.name);
       const initials = (p.name||"").trim().split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase() || "P";
