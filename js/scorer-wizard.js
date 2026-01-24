@@ -105,6 +105,8 @@ export function initScorerWizard(opts){
   let activeTeam = "A";
   let selA = new Set();
   let selB = new Set();
+  // Preserve XI list scroll per team to avoid jump-to-top on re-render
+  const xiScroll = { A: 0, B: 0 };
 
   let tossWinner = null;
   let tossDecision = "BAT";
@@ -112,10 +114,6 @@ export function initScorerWizard(opts){
   let opening = { striker:null, nonStriker:null, bowler:null };
 
   let _bound = false;
-
-  // UI-only state (do not persist in Firebase)
-  // Add Player modal should appear ONLY when user clicks the button.
-  let showAddPlayer = false;
 
   function open(){
     root.classList.remove("hidden");
@@ -144,6 +142,12 @@ function renderPlayingXI(doc){
   const a = doc?.a || "Team A";
   const b = doc?.b || "Team B";
 
+  // Preserve scroll position of the XI list for the currently active team
+  try{
+    const _prevList = qs("#xiList", host);
+    if(_prevList) xiScroll[activeTeam] = _prevList.scrollTop || 0;
+  }catch(e){}
+
   const squads = (opts.getSquads && opts.getSquads()) || {};
   const squadA_names = uniq(squads[a] || squads.A || []);
   const squadB_names = uniq(squads[b] || squads.B || []);
@@ -167,56 +171,11 @@ function renderPlayingXI(doc){
   if(savedA.length===11) selA = new Set(savedA);
   if(savedB.length===11) selB = new Set(savedB);
 
-  const addPlayerModalHTML = `
-    <div class="apBackdrop" id="apBackdrop"></div>
-    <div class="apModal" id="apModal" role="dialog" aria-modal="true">
-      <div class="apHeader">
-        <div>
-          <div class="apTitle">Add Player</div>
-          <div class="apSub">Player add होगा. “Add to squad” tick करने पर future matches के लिए squad में भी add होगा.</div>
-        </div>
-        <button class="apClose" id="apCloseBtn" aria-label="Close">✕</button>
-      </div>
-      <div class="apBody">
-        <div class="apRow">
-          <div class="apCol">
-            <label class="apLabel">Team</label>
-            <select class="apInput" id="apTeamSelect"></select>
-          </div>
-          <div class="apCol">
-            <label class="apLabel">Role</label>
-            <select class="apInput" id="apRole">
-              <option value="">—</option>
-              <option value="BAT">BAT</option>
-              <option value="BOWL">BOWL</option>
-              <option value="AR">AR</option>
-              <option value="WK">WK</option>
-            </select>
-          </div>
-        </div>
-
-        <label class="apLabel">Player Name</label>
-        <input class="apInput" id="apName" placeholder="Full name" autocomplete="off" />
-
-        <div class="apChips">
-          <label class="apChip"><input type="checkbox" id="apC" /> <span>C</span></label>
-          <label class="apChip"><input type="checkbox" id="apVC" /> <span>VC</span></label>
-          <label class="apChip"><input type="checkbox" id="apWK" /> <span>WK</span></label>
-          <label class="apChip apSquad"><input type="checkbox" id="apAddSquad" checked /> <span>Add to squad for future matches</span></label>
-        </div>
-      </div>
-      <div class="apFooter">
-        <button class="btn sm ghost" id="apCancel">Cancel</button>
-        <button class="btn sm" id="apAdd">Add Player</button>
-      </div>
-    </div>
-  `;
-
   host.innerHTML = `
     <div class="wizSection">
       <div class="xiTabs">
-        <button class="xiTab ${activeTeam==='A'?'on':''}" id="xiTabA">${esc(teamDisp(a))} <span class="muted" id="xiCountA">(${selA.size}/11)</span></button>
-        <button class="xiTab ${activeTeam==='B'?'on':''}" id="xiTabB">${esc(teamDisp(b))} <span class="muted" id="xiCountB">(${selB.size}/11)</span></button>
+        <button class="xiTab ${activeTeam==='A'?'on':''}" id="xiTabA">${esc(teamDisp(a))} <span class="muted">(${selA.size}/11)</span></button>
+        <button class="xiTab ${activeTeam==='B'?'on':''}" id="xiTabB">${esc(teamDisp(b))} <span class="muted">(${selB.size}/11)</span></button>
         <div class="xiHint">15 में से exact 11 चुनिए • दोनों टीम 11/11 होने पर ही Next</div>
       </div>
 
@@ -234,10 +193,56 @@ function renderPlayingXI(doc){
       <div class="wizList" id="xiList"></div>
     </div>
 
-    ${showAddPlayer ? addPlayerModalHTML : ``}
+      <div class="apBackdrop hidden" id="apBackdrop"></div>
+      <div class="apModal hidden" id="apModal" role="dialog" aria-modal="true">
+        <div class="apHeader">
+          <div>
+            <div class="apTitle">Add Player</div>
+            <div class="apSub">Player add होगा. “Add to squad” tick करने पर future matches के लिए squad में भी add होगा.</div>
+          </div>
+          <button class="apClose" id="apCloseBtn" aria-label="Close">✕</button>
+        </div>
+
+        <div class="apBody">
+          <div class="apRow">
+            <div class="apCol">
+              <label class="apLabel">Team</label>
+              <select class="apInput" id="apTeamSelect"></select>
+            </div>
+            <div class="apCol">
+              <label class="apLabel">Role</label>
+              <select class="apInput" id="apRole">
+                <option value="">—</option>
+                <option value="BAT">BAT</option>
+                <option value="BOWL">BOWL</option>
+                <option value="AR">AR</option>
+                <option value="WK">WK</option>
+              </select>
+            </div>
+          </div>
+
+          <label class="apLabel">Player Name</label>
+          <input class="apInput" id="apName" placeholder="Full name" autocomplete="off" />
+
+          <div class="apChips">
+            <label class="apChip"><input type="checkbox" id="apC" /> <span>C</span></label>
+            <label class="apChip"><input type="checkbox" id="apVC" /> <span>VC</span></label>
+            <label class="apChip"><input type="checkbox" id="apWK" /> <span>WK</span></label>
+            <label class="apChip apSquad"><input type="checkbox" id="apAddSquad" checked /> <span>Add to squad for future matches</span></label>
+          </div>
+        </div>
+
+        <div class="apFooter">
+          <button class="btn sm ghost" id="apCancel">Cancel</button>
+          <button class="btn sm" id="apAdd">Add Player</button>
+        </div>
+      </div>
+
   `;
 
   const list = qs("#xiList", host);
+  // Restore scroll after re-render
+  try{ requestAnimationFrame(()=>{ if(list) list.scrollTop = xiScroll[activeTeam] || 0; }); }catch(e){}
   const strip = qs("#xiRoleStrip", host);
 // Add Player modal wiring
   const teamNameEl = qs("#xiActiveTeamName", host);
@@ -255,6 +260,31 @@ function renderPlayingXI(doc){
   const apCancel = qs("#apCancel", host);
   const apAdd = qs("#apAdd", host);
 
+  // Ensure Add Player modal/backdrop do not take space inside the wizard layout
+  try{
+    if(apBackdrop){
+      apBackdrop.classList.add("hidden");
+      apBackdrop.style.display = "none";
+      apBackdrop.style.position = "fixed";
+      apBackdrop.style.inset = "0";
+      apBackdrop.style.zIndex = "9998";
+    }
+    if(apModal){
+      apModal.classList.add("hidden");
+      apModal.style.display = "none";
+      apModal.style.position = "fixed";
+      apModal.style.left = "50%";
+      apModal.style.top = "50%";
+      apModal.style.transform = "translate(-50%,-50%)";
+      apModal.style.zIndex = "9999";
+      apModal.style.maxHeight = "80vh";
+      apModal.style.overflow = "auto";
+      apModal.style.width = "min(720px, calc(100vw - 24px))";
+    }
+    if(apBackdrop && apBackdrop.parentElement !== document.body) document.body.appendChild(apBackdrop);
+    if(apModal && apModal.parentElement !== document.body) document.body.appendChild(apModal);
+  }catch(e){}
+
   function fillTeamSelect(){
     if(!apTeamSelect) return;
     apTeamSelect.innerHTML = `
@@ -265,13 +295,6 @@ function renderPlayingXI(doc){
   }
 
   function showAddModal(){
-    // Render the modal only when needed (keeps XI screen clean and avoids confusing always-visible form)
-    if(!showAddPlayer){
-      showAddPlayer = true;
-      render();
-      return;
-    }
-    // Modal is now in DOM
     fillTeamSelect();
     if(apName) apName.value = "";
     if(apRole) apRole.value = "";
@@ -280,14 +303,25 @@ function renderPlayingXI(doc){
     if(apWK) apWK.checked = false;
     if(apAddSquad) apAddSquad.checked = true;
 
-    if(apModal) apModal.scrollTop = 0;
+    if(apBackdrop){ apBackdrop.classList.remove("hidden"); apBackdrop.style.display="block"; }
+    if(apModal){
+      apModal.classList.remove("hidden");
+      apModal.style.display = "block";
+      apModal.style.visibility = "visible";
+      apModal.style.opacity = "1";
+      apModal.scrollTop = 0;
+    }
+    // focus name
     setTimeout(()=>{ try{ apName && apName.focus(); }catch(e){} }, 30);
   }
 
   function hideAddModal(){
-    if(showAddPlayer){
-      showAddPlayer = false;
-      render();
+    if(apBackdrop){ apBackdrop.classList.add("hidden"); apBackdrop.style.display="none"; }
+    if(apModal){
+      apModal.classList.add("hidden");
+      apModal.style.display = "none";
+      apModal.style.visibility = "";
+      apModal.style.opacity = "";
     }
   }
 
@@ -344,20 +378,10 @@ function renderPlayingXI(doc){
     return c;
   }
 
-  function refreshCounts(){
-    const cA = qs('#xiCountA', host);
-    const cB = qs('#xiCountB', host);
-    if(cA) cA.textContent = `(${selA.size}/11)`;
-    if(cB) cB.textContent = `(${selB.size}/11)`;
-  }
-
-  function draw(preserveScroll=false){
+  function draw(){
     const basePlayers = activeTeam==='A' ? squadA : squadB;
     const players = mergeByName(basePlayers, TEMP_ADDED[activeTeam] || []);
     const set = activeTeam==='A' ? selA : selB;
-
-    // Preserve scroll position to prevent jumping to top on each selection.
-    const prevScroll = preserveScroll ? (list?.scrollTop || 0) : 0;
 
     if(teamNameEl){ teamNameEl.textContent = teamDisp(activeTeam==='A'?a:b); }
 
@@ -380,7 +404,6 @@ function renderPlayingXI(doc){
       </div>
     ` : `<div class="muted small">Role data available नहीं है (squadMeta missing)</div>`;
 
-    
     list.innerHTML = players.map(p=>{
       const on = set.has(p.name);
       const initials = (p.name||"").trim().split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase() || "P";
@@ -408,22 +431,14 @@ function renderPlayingXI(doc){
       `;
     }).join("");
 
-    // Restore scroll after DOM updates
-    if(preserveScroll){
-      try{ list.scrollTop = prevScroll; }catch(e){}
-    }
-
     qsa(".wizPlayerRow", list).forEach(row=>{
       const toggle = ()=>{
         const name = row.getAttribute("data-player");
         const cur = activeTeam==='A' ? selA : selB;
         if(cur.has(name)) cur.delete(name);
         else { if(cur.size>=11) return; cur.add(name); }
-
-        // Do NOT full re-render (it resets scroll). Update list + counters only.
-        refreshCounts();
-        draw(true);
-        updateNextState(doc);
+        xiScroll[activeTeam] = (list && list.scrollTop) ? list.scrollTop : 0;
+        render(); // re-render from current doc
       };
       row.addEventListener("click", toggle);
       row.addEventListener("keydown", (e)=>{ if(e.key==="Enter" || e.key===" "){ e.preventDefault(); toggle(); } });
@@ -434,8 +449,6 @@ function renderPlayingXI(doc){
   qs("#xiTabB", host).addEventListener("click", ()=>{ activeTeam='B'; render(); });
 
   draw();
-  // If modal requested, open it after initial draw so the form appears as an overlay.
-  if(showAddPlayer) showAddModal();
 }
 
   function renderToss(doc){
@@ -552,11 +565,18 @@ function renderPlayingXI(doc){
     const doc = opts.getDoc && opts.getDoc();
     if(!doc){ close(); return; }
 
-    // resumable step from doc
-    if(!isXIReady(doc)) step = 1;
-    else if(!isTossReady(doc)) step = 2;
-    else if(!isOpeningReady(doc)) step = 3;
-    else { close(); return; }
+    // Determine farthest allowed step from saved doc state.
+    // IMPORTANT: Allow user to go BACK to earlier steps even if later steps are already "ready".
+    let autoStep = 1;
+    if(isXIReady(doc)) autoStep = 2;
+    if(isXIReady(doc) && isTossReady(doc)) autoStep = 3;
+    // If everything is ready, wizard is not needed.
+    if(isXIReady(doc) && isTossReady(doc) && isOpeningReady(doc)){
+      close(); 
+      return;
+    }
+    // Clamp step only forward (can't go beyond what doc allows), but do NOT force-forward.
+    if(step > autoStep) step = autoStep;
 
     open();
     titleEl.textContent = (step===1) ? "Select Playing XI" : (step===2) ? "Toss" : "Opening Setup";
